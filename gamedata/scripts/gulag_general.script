@@ -352,6 +352,42 @@ job_info_by_job_type_id = {
 ------------------------------------------------------------------------------------
 -- Smart Job Automation functions
 ------------------------------------------------------------------------------------
+local function init_stalker_passive_jobs(smart,stalker_jobs,gname)
+	local name, job_ltx
+	local max_jobs = smart.max_population > 0 and smart.max_population*3 or 1
+	for i=1, max_jobs do
+		name = gname.."_passive_"..i
+		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 1})
+		
+		if (ltx) then
+			job_ltx = [[
+[logic@%s]
+active = cover@%s
+
+[cover@%s]
+meet = meet@generic_lager
+smart = %s
+radius_min = 3
+radius_max = 8
+use_attack_direction = false
+anim = {!npc_community(zombied)} sit_ass, guard
+]]
+
+			job_ltx = strformat(job_ltx,name,name,name,gname)
+
+			if (smart.def_restr) then
+				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
+			end
+
+			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone) then
+				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+			end
+
+			ltx = ltx .. "\n" .. job_ltx
+		end
+	end
+end
+
 local function init_campfire_point_jobs(smart,stalker_jobs,gname)
 	local name, job_ltx
 	local max_jobs = smart.max_population > 0 and smart.max_population*3 or 1
@@ -1344,36 +1380,16 @@ use_text                       = nil
 
 	-- these tables store job information of the smart terrain
 	local stalker_jobs = {}
+	--local stalker_guard_jobs = {}
 	local monster_jobs = {}
 	local heli_jobs = {}
-
+	
 	-- create heli jobs 
 	init_heli_move_jobs(smart,heli_jobs,gname)
 	init_heli_move_point_jobs(smart,heli_jobs,gname)
 	init_heli_hide_jobs(smart,heli_jobs,gname)
 	
-	-- create stalker jobs
-	init_campfire_point_jobs(smart,stalker_jobs,gname)
-	init_generic_point_jobs(smart,stalker_jobs,gname)
-	init_surge_jobs(smart,stalker_jobs,gname)
-	init_sleep_jobs(smart,stalker_jobs,gname)
-	init_collector_jobs(smart,stalker_jobs,gname)
-	init_walker_jobs(smart,stalker_jobs,gname)
-	init_patrol_jobs(smart,stalker_jobs,gname)
-	init_animpoint_jobs(smart,stalker_jobs,gname)
-	init_guard_jobs(smart,stalker_jobs,gname)
-	init_sniper_jobs(smart,stalker_jobs,gname)
-	init_camper_jobs(smart,stalker_jobs,gname)
-	init_beh_jobs(smart,stalker_jobs,gname)
-
-	-- create monster jobs
-	init_monster_jobs(smart,monster_jobs,gname)
-
-	-- reference newly created job tables
-	smart.stalker_jobs = stalker_jobs
-	smart.monster_jobs = monster_jobs
-	smart.heli_jobs = heli_jobs
-
+	--[[
 	-- create exclusive jobs
 	local smart_ini = smart.ini
 	if (smart_ini:section_exist("smart_terrain")) then
@@ -1392,11 +1408,20 @@ use_text                       = nil
 			end
 		end
 	end
-	
-	-- sort jobs for fast iteration. Highest priority jobs will be at lower indices
-	table.sort(smart.stalker_jobs,	function(a,b) return get_job_prior(a) > get_job_prior(b) end)
-	table.sort(smart.monster_jobs,	function(a,b) return get_job_prior(a) > get_job_prior(b) end)
-	table.sort(smart.heli_jobs,		function(a,b) return get_job_prior(a) > get_job_prior(b) end)
+--]]
+
+	-- create stalker jobs
+	init_stalker_passive_jobs(smart,stalker_jobs,gname)
+	--init_stalker_guard_jobs(smart,stalker_jobs,gname)
+
+	-- create monster jobs
+	init_monster_jobs(smart,monster_jobs,gname)
+
+	-- reference newly created job tables
+	smart.stalker_jobs = stalker_jobs
+	--smart.stalker_guard_jobs = stalker_guard_jobs
+	smart.monster_jobs = monster_jobs
+	smart.heli_jobs = heli_jobs
 
 	if (ltx) then
 		--[[
