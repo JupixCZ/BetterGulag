@@ -24,7 +24,7 @@ local JOB_BEH = 12
 
 local JOB_TYPE_GUARD = 100
 local JOB_TYPE_PASSIVE = 200
---local JOB_TYPE_GENERIC = 300
+local JOB_TYPE_EXTRA = 300
 
 nearest_to_actor_smart = {id = nil , dist = math.huge}
 
@@ -477,7 +477,7 @@ function se_smart_terrain:load_jobs()
 	self.job_guard_total_count = table.getn(self.stalker_guard_jobs)
 	self.job_passive_total_count = table.getn(self.stalker_passive_jobs)
 	
-	local table_of_jobs = {self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
+	local table_of_jobs = {self.stalker_extra_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
 	local tbl
 	for n=1,#table_of_jobs do
 		tbl = table_of_jobs[n]
@@ -693,10 +693,10 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 	local new_job
 
 	local stalker_guard_jobs = self.stalker_guard_jobs
-	local stalker_generic_jobs = self.stalker_generic_jobs
 	local stalker_passive_jobs = self.stalker_passive_jobs
 	local stalker_sleep_jobs = self.stalker_sleep_jobs
 	local stalker_surge_jobs = self.stalker_surge_jobs
+	local stalker_extra_jobs = self.stalker_extra_jobs
 
 	--[[
 	-- If the NPC has an existing job link, validate it and iterate job table
@@ -775,8 +775,8 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			chosen_jobs = stalker_passive_jobs
 		elseif (job_type == JOB_TYPE_GUARD) then
 			chosen_jobs = stalker_guard_jobs
-		--elseif (job_type == JOB_TYPE_GENERIC) then
-		--	chosen_jobs = stalker_generic_jobs
+		elseif (job_type == JOB_TYPE_EXTRA) then
+			chosen_jobs = stalker_extra_jobs
 		end
 
 		local chosen_jobs_count = table.getn(chosen_jobs)
@@ -818,15 +818,12 @@ function se_smart_terrain:get_optimal_job_type()
 				return JOB_TYPE_PASSIVE
 			end
 		end
-
     elseif (is_free_guard_job_exists) then
     	return JOB_TYPE_GUARD
-    --elseif (is_free_passive_job_exists)
-    --	return JOB_TYPE_PASSIVE
-    --else 
-    --	return JOB_TYPE_GENERIC
+    elseif (is_free_passive_job_exists) then
+    	return JOB_TYPE_PASSIVE
 	else
-		return JOB_TYPE_PASSIVE
+		return JOB_TYPE_EXTRA
     end
 
 end
@@ -1484,6 +1481,14 @@ function se_smart_terrain:find_job_by_section(section)
 		for i=1,#self.stalker_guard_jobs do
 			if (self.stalker_guard_jobs[i].section == section) then
 				return self.stalker_guard_jobs[i]
+			end
+		end
+	end 
+
+	if (self.stalker_extra_jobs) then
+		for i=1,#self.stalker_extra_jobs do
+			if (self.stalker_extra_jobs[i].section == section) then
+				return self.stalker_extra_jobs[i]
 			end
 		end
 	end 
