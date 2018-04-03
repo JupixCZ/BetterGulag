@@ -352,45 +352,11 @@ job_info_by_job_type_id = {
 ------------------------------------------------------------------------------------
 -- Smart Job Automation functions
 ------------------------------------------------------------------------------------
-local function init_campfire_point_jobs(smart,stalker_jobs,gname)
+local function init_extra_jobs(smart,stalker_jobs,gname)
 	local name, job_ltx
 	local max_jobs = smart.max_population > 0 and smart.max_population*3 or 1
 	for i=1, max_jobs do
-		name = gname.."_campfire_point_"..i
-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 0})
-		
-		if (ltx) then
-			job_ltx = [[
-[logic@%s]
-active = campfire_point@%s
-
-[campfire_point@%s]
-smart = %s
-meet = meet@generic_lager
-use_camp = {!npc_community(zombied)} true, false
-anim = {!npc_community(zombied)} sit_ass, guard
-]]
-
-			job_ltx = strformat(job_ltx,name,name,name,gname)
-
-			if (smart.def_restr) then
-				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
-			end
-
-			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone) then
-				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
-			end
-
-			ltx = ltx .. "\n" .. job_ltx
-		end
-	end
-end
-
-local function init_generic_point_jobs(smart,stalker_jobs,gname)
-	local name, job_ltx
-	local max_jobs = smart.max_population > 0 and smart.max_population*3 or 1
-	for i=1, max_jobs do
-		name = gname.."_point_"..i
+		name = gname.."_extra_"..i
 		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 1})
 		
 		if (ltx) then
@@ -420,9 +386,9 @@ anim = {!npc_community(zombied)} sit_ass, guard
 			ltx = ltx .. "\n" .. job_ltx
 		end
 	end
- end
+end
 
- local function init_surge_jobs(smart,stalker_jobs,gname)
+local function init_surge_jobs(smart,stalker_jobs,gname)
 	local name, job_ltx
 	local i = 1
 	while level.patrol_path_exists(gname.."_surge_"..i.."_walk") do
@@ -1347,7 +1313,7 @@ use_text                       = nil
 	local stalker_passive_jobs = {}
 	local stalker_sleep_jobs = {}
 	local stalker_surge_jobs = {}
-	--local stalker_generic_jobs = {}
+	local stalker_extra_jobs = {}
 	local monster_jobs = {}
 	local heli_jobs = {}
 
@@ -1357,8 +1323,7 @@ use_text                       = nil
 	init_heli_hide_jobs(smart,heli_jobs,gname)
 	
 	-- create stalker jobs
-	init_campfire_point_jobs(smart,stalker_passive_jobs,gname)
-	init_generic_point_jobs(smart,stalker_passive_jobs,gname)
+	init_extra_jobs(smart,stalker_extra_jobs,gname)
 	init_surge_jobs(smart,stalker_surge_jobs,gname)
 	init_sleep_jobs(smart,stalker_sleep_jobs,gname)
 	init_collector_jobs(smart,stalker_passive_jobs,gname)
@@ -1378,7 +1343,7 @@ use_text                       = nil
 	smart.stalker_passive_jobs = stalker_passive_jobs
 	smart.stalker_sleep_jobs = stalker_sleep_jobs
 	smart.stalker_surge_jobs = stalker_surge_jobs
-	--smart.stalker_generic_jobs = stalker_generic_jobs
+	smart.stalker_extra_jobs = stalker_extra_jobs
 
 	smart.monster_jobs = monster_jobs
 	smart.heli_jobs = heli_jobs
