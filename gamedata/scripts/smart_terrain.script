@@ -780,6 +780,8 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		end
 
 		local chosen_jobs_count = table.getn(chosen_jobs)
+		printf("%s jobs_available for job type (%s)",chosen_jobs_count, job_type)
+
 		local job_tries = 0
 		local possible_new_job
 
@@ -789,6 +791,12 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 
 			if (self.npc_by_job_section[possible_new_job.section] == nil and job_avail_to_npc(npc_info, possible_new_job, self)) then
 				new_job = possible_new_job
+
+				if (job_type == JOB_TYPE_PASSIVE) then
+					self.job_passive_count = self.job_passive_count + 1
+				elseif (job_type == JOB_TYPE_GUARD) then
+					self.job_guard_count = self.job_guard_count + 1
+				end
 			end
 		end 
 
