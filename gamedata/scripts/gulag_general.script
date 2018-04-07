@@ -352,11 +352,43 @@ job_info_by_job_type_id = {
 ------------------------------------------------------------------------------------
 -- Smart Job Automation functions
 ------------------------------------------------------------------------------------
-local function init_extra_jobs(smart,stalker_jobs,gname)
+local function init_generic_jobs(smart,stalker_jobs,gname)
 	local name, job_ltx
 	local max_jobs = smart.max_population > 0 and smart.max_population*3 or 1
 	for i=1, max_jobs do
 		name = gname.."_campfire_point_"..i
+		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 1})
+		
+		if (ltx) then
+			job_ltx = [[
+[logic@%s]
+active = cover@%s
+
+[cover@%s]
+meet = meet@generic_lager
+smart = %s
+radius_min = 3
+radius_max = 8
+use_attack_direction = false
+anim = {!npc_community(zombied)} sit_ass, guard
+]]
+
+			job_ltx = strformat(job_ltx,name,name,name,gname)
+
+			if (smart.def_restr) then
+				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
+			end
+
+			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone) then
+				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+			end
+
+			ltx = ltx .. "\n" .. job_ltx
+		end
+	end
+
+	for i=1, max_jobs do
+		name = gname.."_point_"..i
 		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 1})
 		
 		if (ltx) then
@@ -1238,7 +1270,7 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 		elseif (is_heli) then 
 			rawset(smart.heli_jobs,#smart.heli_jobs+1,new_job)
 		else
-			rawset(smart.stalker_guard_jobs,#smart.stalker_guard_jobs+1,new_job)
+			rawset(smart.stalker_exclusive_jobs,#smart.stalker_exclusive_jobs+1,new_job)
 		end
 
 		return
@@ -1252,7 +1284,7 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	elseif (is_heli) then 
 		rawset(smart.heli_jobs,#smart.heli_jobs+1,new_job)
 	else
-		rawset(smart.stalker_guard_jobs,#smart.stalker_guard_jobs+1,new_job)
+		rawset(smart.stalker_exclusive_jobs,#smart.stalker_exclusive_jobs+1,new_job)
 	end
 end
 ---------------------------------------------------------------------------------------
@@ -1309,11 +1341,14 @@ use_text                       = nil
 ]]
 
 	-- these tables store job information of the smart terrain
+	local stalker_exclusive_jobs = {}
 	local stalker_guard_jobs = {}
 	local stalker_passive_jobs = {}
+	local stalker_generic_jobs = {}
+
 	local stalker_sleep_jobs = {}
 	local stalker_surge_jobs = {}
-	local stalker_extra_jobs = {}
+	
 	local monster_jobs = {}
 	local heli_jobs = {}
 
@@ -1323,7 +1358,7 @@ use_text                       = nil
 	init_heli_hide_jobs(smart,heli_jobs,gname)
 	
 	-- create stalker jobs
-	init_extra_jobs(smart,stalker_extra_jobs,gname)
+	init_generic_jobs(smart,stalker_generic_jobs,gname)
 	init_surge_jobs(smart,stalker_surge_jobs,gname)
 	init_sleep_jobs(smart,stalker_sleep_jobs,gname)
 	init_collector_jobs(smart,stalker_passive_jobs,gname)
@@ -1343,7 +1378,8 @@ use_text                       = nil
 	smart.stalker_passive_jobs = stalker_passive_jobs
 	smart.stalker_sleep_jobs = stalker_sleep_jobs
 	smart.stalker_surge_jobs = stalker_surge_jobs
-	smart.stalker_extra_jobs = stalker_extra_jobs
+	smart.stalker_generic_jobs = stalker_generic_jobs
+	smart.stalker_exclusive_jobs = stalker_exclusive_jobs
 
 	smart.monster_jobs = monster_jobs
 	smart.heli_jobs = heli_jobs
@@ -1354,16 +1390,16 @@ use_text                       = nil
 		if smart_ini:section_exist("exclusive") then
 			local n = smart_ini:line_count("exclusive")
 			local id, value = "",""
-			for i=0,n-1 do
-				result, id, value  = smart_ini:r_line("exclusive",i,"","")
-				add_exclusive_job(smart,"exclusive", id, smart_ini, job_table)
-			end
+		--	for i=0,n-1 do
+		--		result, id, value  = smart_ini:r_line("exclusive",i,"","")
+		--		add_exclusive_job(smart,"exclusive", id, smart_ini, job_table)
+		--	end
 		else
 			local num = 1
-			while smart_ini:line_exist("smart_terrain", "work"..num) do
-				add_exclusive_job(smart,"smart_terrain", "work"..num, smart_ini, job_table)
-				num = num + 1
-			end
+		--	while smart_ini:line_exist("smart_terrain", "work"..num) do
+		--		add_exclusive_job(smart,"smart_terrain", "work"..num, smart_ini, job_table)
+		--		num = num + 1
+		--	end
 		end
 	end
 	

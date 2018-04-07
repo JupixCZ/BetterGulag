@@ -22,9 +22,10 @@ local JOB_SNIPER = 10
 local JOB_CAMPER = 11
 local JOB_BEH = 12
 
-local JOB_TYPE_GUARD = 100
+local JOB_TYPE_EXCLUSIVE = 400
+local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
-local JOB_TYPE_EXTRA = 300
+local JOB_TYPE_GENERIC = 100
 
 nearest_to_actor_smart = {id = nil , dist = math.huge}
 
@@ -473,11 +474,8 @@ function se_smart_terrain:load_jobs()
 	-- Setup Alife Tasks for smart's gulag jobs
 	local job,active_section,section,ltx, path_field, path_name, smartcover, smartcover_name, prefix_name, job_type
 	local gg, CALifeSmartTerrainTask,level = game_graph(),CALifeSmartTerrainTask,level
-
-	self.job_guard_total_count = table.getn(self.stalker_guard_jobs)
-	self.job_passive_total_count = table.getn(self.stalker_passive_jobs)
 	
-	local table_of_jobs = {self.stalker_extra_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
+	local table_of_jobs = {self.stalker_exclusive_jobs, self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
 	local tbl
 	for n=1,#table_of_jobs do
 		tbl = table_of_jobs[n]
@@ -690,13 +688,12 @@ function se_smart_terrain:select_npc_job(npc_info,now,surge_started)
 end
 
 function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
-	local new_job
-
+	local stalker_exclusive_jobs = self.stalker_exclusive_jobs
 	local stalker_guard_jobs = self.stalker_guard_jobs
 	local stalker_passive_jobs = self.stalker_passive_jobs
 	local stalker_sleep_jobs = self.stalker_sleep_jobs
 	local stalker_surge_jobs = self.stalker_surge_jobs
-	local stalker_extra_jobs = self.stalker_extra_jobs
+	local stalker_generic_jobs = self.stalker_generic_jobs
 
 	--[[
 	-- If the NPC has an existing job link, validate it and iterate job table
@@ -768,74 +765,85 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 	end
 --]]
 	if not (npc_info.job) then
-		local chosen_jobs
-		local job_type = self:get_optimal_job_type()
-
-		if (job_type == JOB_TYPE_PASSIVE) then
-			chosen_jobs = stalker_passive_jobs
-		elseif (job_type == JOB_TYPE_GUARD) then
-			chosen_jobs = stalker_guard_jobs
-		elseif (job_type == JOB_TYPE_EXTRA) then
-			chosen_jobs = stalker_extra_jobs
+		local possible_exclusive_job = self:try_get_exclusive_job(npc_info)
+		if (possible_exclusive_job ~= nil) then
+			return possible_exclusive_job
 		end
 
-		local chosen_jobs_count = table.getn(chosen_jobs)
-		printf("%s jobs_available for job type (%s)",chosen_jobs_count, job_type)
+		local job_type = self:get_optimal_job_type()
 
-		local job_tries = 0
-		local possible_new_job
+		local job = nil
+		while (job == nil and job_type > 0) do
+			job = self:get_free_job(job_type, npc_info)
 
-		while (new_job == nil and job_tries < 10) do
-			job_tries = job_tries + 1
-			possible_new_job = chosen_jobs[math.random(1, chosen_jobs_count)]
-
-			if (self.npc_by_job_section[possible_new_job.section] == nil and job_avail_to_npc(npc_info, possible_new_job, self)) then
-				new_job = possible_new_job
-
-				if (job_type == JOB_TYPE_PASSIVE) then
-					self.job_passive_count = self.job_passive_count + 1
-				elseif (job_type == JOB_TYPE_GUARD) then
-					self.job_guard_count = self.job_guard_count + 1
-				end
+			if (job == nil) then
+				job_type = job_type - 100
 			end
-		end 
+		end
 
-		return new_job
+		if (job == nil) then
+			return
+		else 
+			return job
+		end
+	end
+end
+
+function se_smart_terrain:try_get_exclusive_job(npc_info)
+	local stalker_exclusive_jobs = self.stalker_exclusive_jobs
+	local index = 1
+	local found_exclusive_job
+	local exclusive_job
+
+	while (found_exclusive_job == nil and index <= table.getn(stalker_exclusive_jobs)) do
+		exclusive_job = stalker_exclusive_jobs[index]
+
+		if (self.npc_by_job_section[exclusive_job.section] == nil and job_avail_to_npc(npc_info, exclusive_job, self)) then
+			found_exclusive_job = exclusive_job
+		end
 	end
 
-	return
+	return exclusive_job
+end
+
+function se_smart_terrain:extract_free_jobs_only(former_jobs, npc_info)
+	local free_jobs = {}
+	local free_jobs_index = 1
+
+	for index, job in ipairs(former_jobs) do 
+		if (self.npc_by_job_section[job.section] == nil and job_avail_to_npc(npc_info, job, self)) then
+			free_jobs[free_jobs_index] = job 
+		end
+	end
+
+	return free_jobs
+end
+
+function se_smart_terrain:get_free_job(job_type, npc_info)
+	local jobs_table
+
+	if (job_type == JOB_TYPE_GUARD) then
+		jobs_table = self.stalker_guard_jobs
+	elseif (job_type == JOB_TYPE_PASSIVE) then
+		jobs_table = self.stalker_passive_jobs
+	else 
+		jobs_table = self.stalker_generic_jobs
+	end
+
+	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
+	local free_jobs_count = table.getn(free_jobs)
+	if (free_jobs_count == 0) then
+		return nil
+	end
+
+	local job_rand_index = math.random(1, free_jobs_count)
+	return free_jobs[job_rand_index]
 end
 
 function se_smart_terrain:get_optimal_job_type()
-	local is_free_guard_job_exists = self.job_guard_count < self.job_guard_total_count
-	local is_free_passive_job_exists = self.job_passive_count < self.job_passive_total_count
-
-	if (is_free_guard_job_exists and is_free_passive_job_exists) then
-		local job_type_rand = math.random(1, 10)
-
-		if (self.job_guard_count * 2 < self.job_passive_count) then
-			if (job_type_rand < 9) then
-				return JOB_TYPE_GUARD
-			else 
-				return JOB_TYPE_PASSIVE
-			end
-		else 
-			if (job_type_rand < 4) then
-				return JOB_TYPE_GUARD
-			else
-				return JOB_TYPE_PASSIVE
-			end
-		end
-    elseif (is_free_guard_job_exists) then
-    	return JOB_TYPE_GUARD
-    elseif (is_free_passive_job_exists) then
-    	return JOB_TYPE_PASSIVE
-	else
-		return JOB_TYPE_EXTRA
-    end
-
+	return JOB_TYPE_GUARD
 end
-
+		
 function se_smart_terrain:select_regular_npc_job(npc_info,now,surge_started)
 	local new_job
 
@@ -1493,10 +1501,18 @@ function se_smart_terrain:find_job_by_section(section)
 		end
 	end 
 
-	if (self.stalker_extra_jobs) then
-		for i=1,#self.stalker_extra_jobs do
-			if (self.stalker_extra_jobs[i].section == section) then
-				return self.stalker_extra_jobs[i]
+	if (self.stalker_exclusive_jobs) then
+		for i=1,#self.stalker_exclusive_jobs do
+			if (self.stalker_exclusive_jobs[i].section == section) then
+				return self.stalker_exclusive_jobs[i]
+			end
+		end
+	end 
+
+	if (self.stalker_generic_jobs) then
+		for i=1,#self.stalker_generic_jobs do
+			if (self.stalker_generic_jobs[i].section == section) then
+				return self.stalker_generic_jobs[i]
 			end
 		end
 	end 
