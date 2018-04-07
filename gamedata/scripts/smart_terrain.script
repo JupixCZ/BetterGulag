@@ -688,13 +688,6 @@ function se_smart_terrain:select_npc_job(npc_info,now,surge_started)
 end
 
 function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
-	local stalker_exclusive_jobs = self.stalker_exclusive_jobs
-	local stalker_guard_jobs = self.stalker_guard_jobs
-	local stalker_passive_jobs = self.stalker_passive_jobs
-	local stalker_sleep_jobs = self.stalker_sleep_jobs
-	local stalker_surge_jobs = self.stalker_surge_jobs
-	local stalker_generic_jobs = self.stalker_generic_jobs
-
 	--[[
 	-- If the NPC has an existing job link, validate it and iterate job table
 	-- for a higher priority job according to defined STEP_SIZE
@@ -766,7 +759,8 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 --]]
 	if not (npc_info.job) then
 		local possible_exclusive_job = self:try_get_exclusive_job(npc_info)
-		if (possible_exclusive_job ~= nil) then
+		if (possible_exclusive_job) then
+			printf("EXCLUSIVE OK %s FOR NPC %s", possible_exclusive_job.section, npc_info.se_obj:name())
 			return possible_exclusive_job
 		end
 
@@ -784,6 +778,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		if (job == nil) then
 			return
 		else 
+			printf("job OK %s for NPC %s with job_type (%s)", job.section, npc_info.se_obj:name(), job_type)
 			return job
 		end
 	end
@@ -791,19 +786,17 @@ end
 
 function se_smart_terrain:try_get_exclusive_job(npc_info)
 	local stalker_exclusive_jobs = self.stalker_exclusive_jobs
-	local index = 1
-	local found_exclusive_job
-	local exclusive_job
 
-	while (found_exclusive_job == nil and index <= table.getn(stalker_exclusive_jobs)) do
-		exclusive_job = stalker_exclusive_jobs[index]
+	for index, job in ipairs(stalker_exclusive_jobs) do 
+		local current_occupying_npc_id = self.npc_by_job_section[job.section]
 
-		if (self.npc_by_job_section[exclusive_job.section] == nil and job_avail_to_npc(npc_info, exclusive_job, self)) then
-			found_exclusive_job = exclusive_job
+		-- countering strange behaviour after spawn (npc is occupying job but stil his job == null)
+		if ((current_occupying_npc_id == nil or current_occupying_npc_id == npc_info.se_obj.id) and job_avail_to_npc(npc_info, job, self)) then
+			return job 
 		end
 	end
 
-	return exclusive_job
+	return
 end
 
 function se_smart_terrain:extract_free_jobs_only(former_jobs, npc_info)
