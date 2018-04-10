@@ -1263,29 +1263,29 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 		end
 	end
 
+	local job_table
+	if (is_monster) then
+		job_table = smart.monster_jobs
+	elseif (is_heli) then
+		job_table = smart.heli_jobs
+	else
+		if (string.find(sect, "camp_work") ~= nil or string.find(sect, "kamp") ~= nil) then
+			job_table = smart.stalker_passive_jobs
+		else
+			job_table = smart.stalker_exclusive_jobs
+		end
+	end
+
 	if not (job_suitable) then
 		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true}
-		if (is_monster) then
-			rawset(smart.monster_jobs,#smart.monster_jobs+1,new_job)
-		elseif (is_heli) then 
-			rawset(smart.heli_jobs,#smart.heli_jobs+1,new_job)
-		else
-			rawset(smart.stalker_exclusive_jobs,#smart.stalker_exclusive_jobs+1,new_job)
-		end
-
+		rawset(job_table,#job_table+1,new_job)
 		return
 	end
 
 	local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
 
 	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true}
-	if (is_monster) then
-		rawset(smart.monster_jobs,#smart.monster_jobs+1,new_job)
-	elseif (is_heli) then 
-		rawset(smart.heli_jobs,#smart.heli_jobs+1,new_job)
-	else
-		rawset(smart.stalker_exclusive_jobs,#smart.stalker_exclusive_jobs+1,new_job)
-	end
+	rawset(job_table,#job_table+1,new_job)
 end
 ---------------------------------------------------------------------------------------
 -- LOAD SMART JOBS

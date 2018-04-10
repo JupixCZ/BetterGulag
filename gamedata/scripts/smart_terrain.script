@@ -760,7 +760,6 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 	if not (npc_info.job) then
 		local possible_exclusive_job = self:try_get_exclusive_job(npc_info)
 		if (possible_exclusive_job) then
-			printf("EXCLUSIVE OK %s FOR NPC %s", possible_exclusive_job.section, npc_info.se_obj:name())
 			return possible_exclusive_job
 		end
 
@@ -778,7 +777,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		if (job == nil) then
 			return
 		else 
-			printf("job OK %s for NPC %s with job_type (%s)", job.section, npc_info.se_obj:name(), job_type)
+			printf("JOB %s TYPE %s FOR NPC %s", job.section, job_type, npc_info.se_obj:name())
 			return job
 		end
 	end
@@ -804,7 +803,10 @@ function se_smart_terrain:extract_free_jobs_only(former_jobs, npc_info)
 	local free_jobs_index = 1
 
 	for index, job in ipairs(former_jobs) do 
-		if (self.npc_by_job_section[job.section] == nil and job_avail_to_npc(npc_info, job, self)) then
+		local current_occupying_npc_id = self.npc_by_job_section[job.section]
+		
+		-- countering strange behaviour after spawn (npc is occupying job but stil his job == null)
+		if ((current_occupying_npc_id == nil or current_occupying_npc_id == npc_info.se_obj.id) and job_avail_to_npc(npc_info, job, self)) then
 			free_jobs[free_jobs_index] = job 
 		end
 	end
@@ -823,9 +825,12 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 		jobs_table = self.stalker_generic_jobs
 	end
 
+	printf("trying JOB TYPE %s", job_type)
+
 	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
 	local free_jobs_count = table.getn(free_jobs)
 	if (free_jobs_count == 0) then
+		printf("no free jobs for %s", job_type)
 		return nil
 	end
 
