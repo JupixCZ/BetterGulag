@@ -88,6 +88,8 @@ function se_smart_terrain:__init(section) super(section)
 	self.npc_info  = {}
 	self.arriving_npc  = {}
 	self.__campfire_check_time = game.get_game_time()
+	self.guard_jobs_taken_count = 0
+	self.passive_jobs_taken_count = 0
 	--if (USE_MARSHAL) then 
 	--	RegisterScriptCallback("save_state",self)
 	--end
@@ -363,7 +365,9 @@ function se_smart_terrain:register_npc(obj)
 	if (arrived_to_smart(obj, self)) then
 		self.npc_info[obj.id] = self:fill_npc_info(obj)
 		--self.dead_time = empty_table(self.dead_time)
-		self:select_npc_job(self.npc_info[obj.id],true)
+
+		-- commented out, DO WE NEED THIS? IT COMPLICATES LOGIC
+		--self:select_npc_job(self.npc_info[obj.id],true)
 	else
 		self.arriving_npc[obj.id]  = obj
 	end
@@ -763,7 +767,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			return possible_exclusive_job
 		end
 
-		local job_type = self:get_optimal_job_type()
+		local job_type = self:get_optimal_job_type(npc_info)
 
 		local job = nil
 		while (job == nil and job_type > 0) do
@@ -777,7 +781,12 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		if (job == nil) then
 			return
 		else 
-			printf("JOB %s TYPE %s FOR NPC %s", job.section, job_type, npc_info.se_obj:name())
+			if (job_type == JOB_TYPE_GUARD) then
+				self.job_guard_count = self.job_guard_count + 1
+			elseif (job_type == JOB_TYPE_PASSIVE) then
+				self.job_passive_count = self.job_passive_count + 1
+			end
+
 			return job
 		end
 	end
@@ -825,12 +834,9 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 		jobs_table = self.stalker_generic_jobs
 	end
 
-	printf("trying JOB TYPE %s", job_type)
-
 	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
 	local free_jobs_count = table.getn(free_jobs)
 	if (free_jobs_count == 0) then
-		printf("no free jobs for %s", job_type)
 		return nil
 	end
 
@@ -838,8 +844,30 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 	return free_jobs[job_rand_index]
 end
 
-function se_smart_terrain:get_optimal_job_type()
-	return JOB_TYPE_GUARD
+function se_smart_terrain:get_optimal_job_type(npc_info)
+	local job_guard_count = self.job_guard_count
+	local job_passive_count = self.job_passive_count
+	local guard_job_chance = 90
+
+	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 10)
+
+	if (guard_job_chance < 10) then
+		guard_job_chance = 10
+	elseif (guard_job_chance > 90) then
+		guard_job_chance = 90
+	end
+
+	local rand_job_type_index = math.random(1, 100)
+	local optimal_job_type = JOB_TYPE_GUARD
+
+	if (rand_job_type_index > guard_job_chance) then
+		local free_passive_job = self:get_free_job(JOB_TYPE_PASSIVE, npc_info)
+		if (free_passive_job ~= nil) then
+			optimal_job_type = JOB_TYPE_PASSIVE
+		end
+	end
+
+	return optimal_job_type
 end
 		
 function se_smart_terrain:select_regular_npc_job(npc_info,now,surge_started)
@@ -1272,6 +1300,7 @@ function se_smart_terrain:init_npc_after_load()
 		local se_obj = sim:object(id)
 		if (se_obj and arrived_to_smart(se_obj,self)) then
 			self.npc_info[se_obj.id] = self:fill_npc_info(se_obj)
+			printf("init_npc_after_load")
 			self:select_npc_job(self.npc_info[se_obj.id],true)
 			self.arriving_npc[se_obj.id] = nil
 		end
@@ -1607,6 +1636,7 @@ function setup_gulag_and_logic_on_spawn(obj, st, se_obj, stype, loaded)
 		local npc_info = smart.npc_info[se_obj.id]
 		if (npc_info) then 
 			if not (npc_info.job) then
+				printf("setup_gulag_and_logic_spawn")
 				smart:select_npc_job(smart.npc_info[se_obj.id],true)
 				local smart_task = smart.npc_info[se_obj.id].job and smart.npc_info[se_obj.id].job.alife_task
 				if (smart_task) then 
