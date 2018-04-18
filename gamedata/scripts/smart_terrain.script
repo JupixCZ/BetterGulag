@@ -88,8 +88,6 @@ function se_smart_terrain:__init(section) super(section)
 	self.npc_info  = {}
 	self.arriving_npc  = {}
 	self.__campfire_check_time = game.get_game_time()
-	self.guard_jobs_taken_count = 0
-	self.passive_jobs_taken_count = 0
 	--if (USE_MARSHAL) then 
 	--	RegisterScriptCallback("save_state",self)
 	--end
@@ -569,6 +567,7 @@ function se_smart_terrain:clear_job(id,rem)
 	--alun_utils.debug_write(strformat("%s:clear_job %s",self:name(),id))
 	if (self.npc_info[id]) then 
 		if (self.npc_info[id].job) then 
+			local job_type_id = self.npc_info[id].job
 			for sec,npcid in pairs(self.npc_by_job_section) do 
 				if (id == npcid) then 
 					self.npc_by_job_section[sec] = nil
@@ -650,7 +649,6 @@ function se_smart_terrain:select_npc_job(npc_info,now,surge_started)
 	local id = npc_info.se_obj.id
 	-- newly selected job
 	if (new_job and new_job ~= npc_info.job) then
-		
 		-- Unassign npc_id from old job and unreference job section
 		for sec,npcid in pairs(self.npc_by_job_section) do 
 			if (npcid == id) then 
@@ -692,78 +690,21 @@ function se_smart_terrain:select_npc_job(npc_info,now,surge_started)
 end
 
 function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
-	--[[
-	-- If the NPC has an existing job link, validate it and iterate job table
-	-- for a higher priority job according to defined STEP_SIZE
-	if (npc_info.job) then
+	if (npc_info.job and npc_info.job_persist ~= nil) then
 
-		-- Make sure current job is still available
-		if (self.npc_by_job_section[npc_info.job.section] == npc_info.se_obj.id) then
-
-			-- Make sure current job is still available
-			if (job_avail_to_npc(npc_info,npc_info.job,self)) then
-
-				if not (npc_info.current_index) then
-					npc_info.current_index = 1
-				end
-
-				local itr_job
-				local npc_id
-				local step = 1
-				while (new_job == nil and step <= (now and #jobs or st and STEP_SIZE or STEP_SIZE_OFFLINE)) do
-					step = step + 1
-
-					if (npc_info.current_index > #jobs) then
-						npc_info.current_index = 1
-					end
-
-					-- Step through job table one step at a time looking for a higher prior job
-					itr_job = jobs[npc_info.current_index]
-					npc_info.current_index = npc_info.current_index + 1
-
-					npc_id = self.npc_by_job_section[itr_job.section]
-					
-					-- Check empty job
-					--if (npc_id == nil or npc_id == npc_info.se_obj.id) then
-					if (npc_id == nil) then
-						-- Find only higher priority jobs if already linked to a job
-						if (gulag_general.get_job_prior(itr_job) > gulag_general.get_job_prior(npc_info.job)) then
-							if (job_avail_to_npc(npc_info, itr_job, self)) then
-								-- Only take this higher priority job if when there is either no surge or if job is not in surge cover during surge; takes exclusive no matter what
-								if (itr_job.exclusive or not xr_conditions.surge_started() or not surge_manager.job_in_surge_cover(npc_info.se_obj,npc_info.job)) then 
-									new_job = itr_job
-									npc_info.current_index = 1
-								end
-							end
-						end
-					end
-				end
-			else
-				-- Job is no longer available, unlink job info
-				for sec,npcid in pairs(self.npc_by_job_section) do 
-					if (npcid == npc_info.se_obj.id) then 
-						self.npc_by_job_section[sec] = nil
-					end
-				end
-				npc_info.job = nil
-				npc_info.current_index = 1
-			end
-		else
-			-- Job is not linked properly, npc_id doesn't match owner se_obj
-			for sec,npcid in pairs(self.npc_by_job_section) do 
-				if (npcid == npc_info.se_obj.id) then 
-					self.npc_by_job_section[sec] = nil
-				end
-			end
-		
-			npc_info.job = nil
-			npc_info.current_index = 1
+		if (npc_info.job_persist > 0) then
+			npc_info.job_persist = npc_info.job_persist - 1
+			return npc_info.job
 		end
+
+		self:clear_job(npc_info[id])
+		npc_info.job = nil
 	end
---]]
-	if not (npc_info.job) then
+
+	if (npc_info.job == nil) then
 		local possible_exclusive_job = self:try_get_exclusive_job(npc_info)
 		if (possible_exclusive_job) then
+			npc_info.job_persist = nil
 			return possible_exclusive_job
 		end
 
@@ -781,11 +722,14 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		if (job == nil) then
 			return
 		else 
-			if (job_type == JOB_TYPE_GUARD) then
-				self.job_guard_count = self.job_guard_count + 1
-			elseif (job_type == JOB_TYPE_PASSIVE) then
-				self.job_passive_count = self.job_passive_count + 1
+			local text_job_type = "GUARD"
+			if (job_type == JOB_TYPE_PASSIVE) then
+				text_job_type = "PASSIVE"
 			end
+
+			-- for debugging purpose only, for production user (100, 1200)
+			local job_persist = math.random(50,500)
+			npc_info.job_persist = job_persist
 
 			return job
 		end
@@ -817,6 +761,7 @@ function se_smart_terrain:extract_free_jobs_only(former_jobs, npc_info)
 		-- countering strange behaviour after spawn (npc is occupying job but stil his job == null)
 		if ((current_occupying_npc_id == nil or current_occupying_npc_id == npc_info.se_obj.id) and job_avail_to_npc(npc_info, job, self)) then
 			free_jobs[free_jobs_index] = job 
+			free_jobs_index = free_jobs_index + 1
 		end
 	end
 
@@ -845,8 +790,8 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 end
 
 function se_smart_terrain:get_optimal_job_type(npc_info)
-	local job_guard_count = self.job_guard_count
-	local job_passive_count = self.job_passive_count
+	local job_guard_count = table.getn(self.stalker_guard_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_guard_jobs, npc_info))
+	local job_passive_count = table.getn(self.stalker_passive_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_passive_jobs, npc_info))
 	local guard_job_chance = 90
 
 	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 10)
@@ -858,6 +803,7 @@ function se_smart_terrain:get_optimal_job_type(npc_info)
 	end
 
 	local rand_job_type_index = math.random(1, 100)
+	
 	local optimal_job_type = JOB_TYPE_GUARD
 
 	if (rand_job_type_index > guard_job_chance) then
@@ -865,6 +811,11 @@ function se_smart_terrain:get_optimal_job_type(npc_info)
 		if (free_passive_job ~= nil) then
 			optimal_job_type = JOB_TYPE_PASSIVE
 		end
+	end
+
+	local text_job_type = "GUARD"
+	if (optimal_job_type == JOB_TYPE_PASSIVE) then
+		text_job_type = "PASSIVE"
 	end
 
 	return optimal_job_type
@@ -1005,7 +956,7 @@ function se_smart_terrain:switch_to_desired_job(npc)
 	local changing_npc_id = self.npc_by_job_section[npc_info.need_job]
 
 	-- unlink old job
-	self:clear_job(npc_id)
+	--self:clear_job(npc_id)
 
 	-- No changing npc, find new job
 	if changing_npc_id == nil then
@@ -1300,7 +1251,6 @@ function se_smart_terrain:init_npc_after_load()
 		local se_obj = sim:object(id)
 		if (se_obj and arrived_to_smart(se_obj,self)) then
 			self.npc_info[se_obj.id] = self:fill_npc_info(se_obj)
-			printf("init_npc_after_load")
 			self:select_npc_job(self.npc_info[se_obj.id],true)
 			self.arriving_npc[se_obj.id] = nil
 		end

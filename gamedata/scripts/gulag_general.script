@@ -717,7 +717,7 @@ local function init_guard_jobs(smart,stalker_jobs,gname)
 	while level.patrol_path_exists(gname.."_guard_"..i.."_walk") do
 		name = gname.."_guard_"..i.."_walk"
 		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name,	job_type_id = 9})
-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@follower_"..name, job_type_id = 10}) --, precondition_params = { changing_job = "logic@"..name }, precondition_function = precond_guard_follower})
+		--rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@follower_"..name, job_type_id = 10}) --, precondition_params = { changing_job = "logic@"..name }, precondition_function = precond_guard_follower})
 
 		if (ltx) then
 			job_ltx = [[
@@ -1251,6 +1251,7 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	local active_section = job_ini_file:r_string_ex(lsec,"active") or "nil"
 	local scheme = utils.get_scheme_by_section(active_section)
 	local job_type = job_type_by_scheme[scheme]
+	local job_type_id = nil
 
 	if not (job_type) then
 		printf("gulag_general.add_exclusive_job(): Invalid job_type! smart=%s job_type = %s scheme = %s job=%s sect=%s",smart:name(),job_type,scheme,work,sect)
@@ -1269,7 +1270,8 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	elseif (is_heli) then
 		job_table = smart.heli_jobs
 	else
-		if (string.find(sect, "camp_work") ~= nil or string.find(sect, "kamp") ~= nil) then
+		if (string.find(lsec, "camp_work") or string.find(lsec, "kamp")) then
+			job_type_id = 11
 			job_table = smart.stalker_passive_jobs
 		else
 			job_table = smart.stalker_exclusive_jobs
@@ -1277,14 +1279,14 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	end
 
 	if not (job_suitable) then
-		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true}
+		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true, job_type_id = job_type_id}
 		rawset(job_table,#job_table+1,new_job)
 		return
 	end
 
 	local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
 
-	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true}
+	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id}
 	rawset(job_table,#job_table+1,new_job)
 end
 ---------------------------------------------------------------------------------------
@@ -1362,7 +1364,7 @@ use_text                       = nil
 	init_surge_jobs(smart,stalker_surge_jobs,gname)
 	init_sleep_jobs(smart,stalker_sleep_jobs,gname)
 	init_collector_jobs(smart,stalker_passive_jobs,gname)
-	init_walker_jobs(smart,stalker_passive_jobs,gname)
+	init_walker_jobs(smart,stalker_guard_jobs,gname)
 	init_patrol_jobs(smart,stalker_guard_jobs,gname)
 	init_animpoint_jobs(smart,stalker_passive_jobs,gname)
 	init_guard_jobs(smart,stalker_guard_jobs,gname)
