@@ -78,7 +78,7 @@ function arrived_to_smart(se_obj, smart)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Класс "se_smart_terrain". Обеспечивает поддержку smart terrain в ОФЛАЙНЕ.
+-- пїЅпїЅпїЅпїЅпїЅ "se_smart_terrain". пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ smart terrain пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 ----------------------------------------------------------------------------------------------------------------------
 class "se_smart_terrain" (cse_alife_smart_zone)
 function se_smart_terrain:__init(section) super(section)
@@ -710,7 +710,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 
 		local job_type = self:get_optimal_job_type(npc_info)
 
-		local job = nil
+		local job
 		while (job == nil and job_type > 0) do
 			job = self:get_free_job(job_type, npc_info)
 
@@ -794,7 +794,7 @@ function se_smart_terrain:get_optimal_job_type(npc_info)
 	local job_passive_count = table.getn(self.stalker_passive_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_passive_jobs, npc_info))
 	local guard_job_chance = 90
 
-	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 10)
+	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 5)
 
 	if (guard_job_chance < 10) then
 		guard_job_chance = 10
@@ -1058,7 +1058,7 @@ function se_smart_terrain:load_state(m_data)
 end
 --]]
 --*******************************************************
--- СЕЙВ/ЛОАД
+-- пїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅ
 --*******************************************************
 function se_smart_terrain:STATE_Write(packet)
 	cse_alife_smart_zone.STATE_Write(self, packet)
@@ -1067,7 +1067,7 @@ function se_smart_terrain:STATE_Write(packet)
 	--end
 	--set_save_marker(packet, "save", false, "se_smart_terrain")
 
-	-- Информацию о НПС, идущих в смарт
+	-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
 	local n = 0
 	for k,v in pairs(self.arriving_npc) do
 		n = n + 1
@@ -1079,7 +1079,7 @@ function se_smart_terrain:STATE_Write(packet)
 	end
 
 
-	-- Информацию о НПС в смарте
+	-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	n = 0
 	for k,v in pairs(self.npc_info) do
 		n = n + 1
@@ -1135,7 +1135,7 @@ function se_smart_terrain:STATE_Read(packet, size)
 	--	self:load_state(alife_storage_manager.get_state())
 	--	return
 	--end
-	-- под LevelEditor не пытаться читать из пакета ничего
+	-- пїЅпїЅпїЅ LevelEditor пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	if editor() then
 		return
 	end
@@ -1143,7 +1143,7 @@ function se_smart_terrain:STATE_Read(packet, size)
 	self.need_init_npc = true
 	--set_save_marker(packet, "load", false, "se_smart_terrain")
 
-	-- Информацию о НПС, идущих в смарт
+	-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
 	local n = packet:r_u8()
 	self.arriving_npc = {}
 	for i = 1,n do
@@ -1312,7 +1312,7 @@ function se_smart_terrain:get_smart_props()
 			props = props.."\\nTime_to_spawn:"..tostring(self.respawn_idle - game.get_game_time():diffSec(self.last_respawn_update)).."\\n"
 		end
 			
-		--' Добавляем информацию о находящихся в смарте отрядах
+		--' пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		for k,v in pairs(SIMBOARD.smarts[self.id].squads) do
 			props = props .. tostring(v.id) .. "\\n"
 		end
