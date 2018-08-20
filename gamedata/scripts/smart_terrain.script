@@ -25,6 +25,8 @@ local JOB_BEH = 12
 local JOB_TYPE_EXCLUSIVE = 400
 local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
+local JOB_TYPE_PASSIVE_PLAIN = 201
+local JOB_TYPE_PASSIVE_NIGHT = 202
 local JOB_TYPE_GENERIC = 100
 
 nearest_to_actor_smart = {id = nil , dist = math.huge}
@@ -728,7 +730,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			end
 
 			-- for debugging purpose only, for production user (100, 1200)
-			local job_persist = math.random(50,500)
+			local job_persist = math.random(30,200)
 			npc_info.job_persist = job_persist
 
 			return job
@@ -774,7 +776,18 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 	if (job_type == JOB_TYPE_GUARD) then
 		jobs_table = self.stalker_guard_jobs
 	elseif (job_type == JOB_TYPE_PASSIVE) then
-		jobs_table = self.stalker_passive_jobs
+		local passive_job_type = self:get_optimal_passive_job_type()
+
+		jobs_table = self:extract_preferred_passive_jobs(self.stalker_passive_jobs, passive_job_type)
+		local found_free_preffered_jobs = table.getn(jobs_table) ~= 0 and table.getn(self:extract_free_jobs_only(jobs_table, npc_info)) ~= 0
+
+		printf("trying to find passive job, extracted passive jobs count: " .. table.getn(jobs_table))
+		printf("free jobs count: " .. table.getn(self:extract_free_jobs_only(jobs_table, npc_info)))
+		if (not found_free_preffered_jobs and passive_job_type ~= JOB_TYPE_PASSIVE_PLAIN) then
+			printf("not found free NIGHT job, trying PLAIN")
+			jobs_table = self:extract_preferred_passive_jobs(self.stalker_passive_jobs, JOB_TYPE_PASSIVE_PLAIN)
+			printf("extracted passive jobs count: " .. table.getn(jobs_table))
+		end
 	else 
 		jobs_table = self.stalker_generic_jobs
 	end
@@ -782,11 +795,45 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
 	local free_jobs_count = table.getn(free_jobs)
 	if (free_jobs_count == 0) then
+		printf("no free jobs mate")
 		return nil
 	end
 
 	local job_rand_index = math.random(1, free_jobs_count)
 	return free_jobs[job_rand_index]
+end
+
+function se_smart_terrain:get_optimal_passive_job_type()
+	local optimal_passive_job_type = JOB_TYPE_PASSIVE_PLAIN
+
+	local night_job_chance = 15
+	if (in_time_interval(21, 7)) then
+		night_job_chance = 75
+	end
+
+	local chance = math.random(1, 100)
+	if (chance <= night_job_chance) then
+		optimal_passive_job_type = JOB_TYPE_PASSIVE_NIGHT
+		printf("should take NIGHT job")
+	else
+		printf("should take PLAIN job")
+	end
+
+	return optimal_passive_job_type
+end
+
+function se_smart_terrain:extract_preferred_passive_jobs(jobs, preferred_pasive_job_type)
+	local preferred_passive_jobs = {}
+	local jobs_index = 1
+
+	for index, job in ipairs(jobs) do
+		if (job.passive_job_type == preferred_pasive_job_type) then
+			preferred_passive_jobs[jobs_index] = job
+			jobs_index = jobs_index + 1
+		end
+	end
+
+	return preferred_passive_jobs
 end
 
 function se_smart_terrain:get_optimal_job_type(npc_info)
@@ -803,7 +850,7 @@ function se_smart_terrain:get_optimal_job_type(npc_info)
 	end
 
 	local rand_job_type_index = math.random(1, 100)
-	
+
 	local optimal_job_type = JOB_TYPE_GUARD
 
 	if (rand_job_type_index > guard_job_chance) then
