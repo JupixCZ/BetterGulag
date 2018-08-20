@@ -479,7 +479,7 @@ function se_smart_terrain:load_jobs()
 	local job,active_section,section,ltx, path_field, path_name, smartcover, smartcover_name, prefix_name, job_type
 	local gg, CALifeSmartTerrainTask,level = game_graph(),CALifeSmartTerrainTask,level
 	
-	local table_of_jobs = {self.stalker_exclusive_jobs, self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
+	local table_of_jobs = {self.stalker_exclusive_jobs, self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_plain_jobs,self.stalker_night_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
 	local tbl
 	for n=1,#table_of_jobs do
 		tbl = table_of_jobs[n]
@@ -778,20 +778,25 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 	elseif (job_type == JOB_TYPE_PASSIVE) then
 		local passive_job_type = self:get_optimal_passive_job_type()
 
-		jobs_table = self:extract_preferred_passive_jobs(self.stalker_passive_jobs, passive_job_type)
-		local found_free_preffered_jobs = table.getn(jobs_table) ~= 0 and table.getn(self:extract_free_jobs_only(jobs_table, npc_info)) ~= 0
+		if (passive_job_type == JOB_TYPE_PASSIVE_PLAIN) then
+			jobs_table = self.stalker_plain_jobs
+		else
+			jobs_table = self.stalker_night_jobs
+		end
 
-		printf("trying to find passive job, extracted passive jobs count: " .. table.getn(jobs_table))
+		local found_free_preferred_jobs = table.getn(jobs_table) ~= 0 and table.getn(self:extract_free_jobs_only(jobs_table, npc_info)) ~= 0
+
 		printf("free jobs count: " .. table.getn(self:extract_free_jobs_only(jobs_table, npc_info)))
-		if (not found_free_preffered_jobs and passive_job_type ~= JOB_TYPE_PASSIVE_PLAIN) then
+		if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PASSIVE_PLAIN) then
 			printf("not found free NIGHT job, trying PLAIN")
-			jobs_table = self:extract_preferred_passive_jobs(self.stalker_passive_jobs, JOB_TYPE_PASSIVE_PLAIN)
-			printf("extracted passive jobs count: " .. table.getn(jobs_table))
+			jobs_table = self.stalker_plain_jobs
+			printf("plain jobs count: " .. table.getn(jobs_table))
 		end
 	else 
 		jobs_table = self.stalker_generic_jobs
 	end
 
+	-- rework all this shit - too many extracting dammit!
 	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
 	local free_jobs_count = table.getn(free_jobs)
 	if (free_jobs_count == 0) then
@@ -806,17 +811,12 @@ end
 function se_smart_terrain:get_optimal_passive_job_type()
 	local optimal_passive_job_type = JOB_TYPE_PASSIVE_PLAIN
 
-	local night_job_chance = 15
 	if (in_time_interval(21, 7)) then
-		night_job_chance = 75
-	end
+		local night_job_chance = 75
 
-	local chance = math.random(1, 100)
-	if (chance <= night_job_chance) then
-		optimal_passive_job_type = JOB_TYPE_PASSIVE_NIGHT
-		printf("should take NIGHT job")
-	else
-		printf("should take PLAIN job")
+		if (self:roll(night_job_chance)) then
+			optimal_passive_job_type = JOB_TYPE_PASSIVE_NIGHT
+		end
 	end
 
 	return optimal_passive_job_type
@@ -838,7 +838,7 @@ end
 
 function se_smart_terrain:get_optimal_job_type(npc_info)
 	local job_guard_count = table.getn(self.stalker_guard_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_guard_jobs, npc_info))
-	local job_passive_count = table.getn(self.stalker_passive_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_passive_jobs, npc_info))
+	local job_passive_count = table.getn(self.stalker_plain_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_plain_jobs, npc_info))
 	local guard_job_chance = 90
 
 	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 5)
@@ -984,6 +984,10 @@ function se_smart_terrain:select_regular_npc_job(npc_info,now,surge_started)
 	end
 
 	return new_job
+end
+
+function se_smart_terrain:roll(chance_percentile)
+	return math.random(1, 100) <= chance_percentile
 end
 
 function se_smart_terrain:getJob(obj_id)
@@ -1541,13 +1545,21 @@ function se_smart_terrain:find_job_by_section(section)
 		end
 	end 
 
-	if (self.stalker_passive_jobs) then
-		for i=1,#self.stalker_passive_jobs do
-			if (self.stalker_passive_jobs[i].section == section) then
-				return self.stalker_passive_jobs[i]
+	if (self.stalker_plain_jobs) then
+		for i=1,#self.stalker_plain_jobs do
+			if (self.stalker_plain_jobs[i].section == section) then
+				return self.stalker_plain_jobs[i]
 			end
 		end
-	end 
+	end
+
+	if (self.stalker_night_jobs) then
+		for i=1,#self.stalker_night_jobs do
+			if (self.stalker_night_jobs[i].section == section) then
+				return self.stalker_night_jobs[i]
+			end
+		end
+	end
 
 	if (self.stalker_sleep_jobs) then
 		for i=1,#self.stalker_sleep_jobs do
