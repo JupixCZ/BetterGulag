@@ -94,8 +94,9 @@ local job_type_by_scheme = {
 	["heli_move"]		= "heli_path_job"
 }
 
-local JOB_TYPE_PLAIN = 201
-local JOB_TYPE_NIGHT = 202
+local JOB_TYPE_PLAIN = "plain_job"
+local JOB_TYPE_CAMP = "camp_job"
+local JOB_TYPE_NIGHT = "night_job"
 
 function get_job_prior(job)
 	if (job.exclusive) then 
@@ -351,6 +352,86 @@ job_info_by_job_type_id = {
 	[18]	= {job_type = "heli_hide_job", 	prior = 100, precondition_function = precond_heli_hide, prefix_name = ""},	-- heli_hide
 	[19]    = {job_type = "point_job",	 	prior = 3}
 }
+
+---------------------------------------------------------------------------------------
+-- Smart Job helper functions
+---------------------------------------------------------------------------------------
+local function get_job_ini(smart, job_name)
+	local smart_ini = smart.ini
+	if (smart_ini:section_exist("smart_terrain")) then
+		local specific_job = smart_ini:r_string_ex("specific", job_name)
+		if (specific_job) then
+			local ini_path = "scripts\\" .. specific_job
+			if getFS():exist("$game_config$", ini_path) ~= nil then
+				return ini_file(ini_path)
+			end
+		end
+	end
+end
+
+local function get_specific_job_types(smart, job_name)
+	local specific_job_types = {}
+
+	local job_ini = get_job_ini(smart, job_name)
+	if (job_ini == nil) then
+		return specific_job_types
+	end
+
+	local plain_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_PLAIN, false)
+	if plain_job then table.insert(specific_job_types, JOB_TYPE_PLAIN) end
+
+	local camp_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_CAMP, false)
+	if camp_job then table.insert(specific_job_types, JOB_TYPE_CAMP) end
+
+	local night_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_NIGHT, false)
+	if night_job then table.insert(specific_job_types, JOB_TYPE_NIGHT) end
+
+	return specific_job_types
+end
+
+local function classify_job_by_specific_job_types(smart, job)
+	local specific_job_types = job.specific_job_types
+
+	for index, specific_job_type in ipairs(specific_job_types) do
+		if specific_job_type == JOB_TYPE_PLAIN then
+			table.insert(smart.stalker_plain_jobs, job)
+			printf(JOB_TYPE_PLAIN)
+		elseif specific_job_type == JOB_TYPE_CAMP then
+			table.insert(smart.stalker_camp_jobs, job)
+			printf(JOB_TYPE_CAMP)
+		elseif specific_job_type == JOB_TYPE_NIGHT then
+			table.insert(smart.stalker_night_jobs, job)
+			printf(JOB_TYPE_NIGHT)
+		end
+	end
+end
+
+local function get_generic_animpoint_job_ltx(smart, name)
+	local job_ltx = [[
+		[logic@%s]
+		active = animpoint@%s
+
+		[animpoint@%s]
+		meet = meet@generic_animpoint
+		cover_name = %s
+		]]
+
+	job_ltx = strformat(job_ltx,name,name,name,name)
+
+	if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
+		job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
+	end
+
+	if (smart.def_restr) then
+		job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
+	end
+
+	if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
+		job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+	end
+
+	return job_ltx
+end
 
 ------------------------------------------------------------------------------------
 -- Smart Job Automation functions
@@ -646,106 +727,47 @@ path_walk = patrol_%s_walk
 	end
 end
 
-local function init_animpoint_jobs(smart,gname)
-	local name, job_ltx
+local function init_animpoint_jobs(smart, gname, job_suffix, job_type_id)
+	local job_ltx, job_name, specific_job_types_var
 	local i = 1
-	local passive_job_type
-	local smart_ini = smart.ini
-	local work
-	local job_name
 
-	while (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i] ~= nil) do
-		local night_job = false
-		job_name = gname .. "_animpoint_"..i
+	while (se_smart_cover.registered_smartcovers[gname .. job_suffix .. i] ~= nil) do
+		job_name = gname .. job_suffix ..i
 
-		printf("loading job "..job_name)
-		if (smart_ini:section_exist("smart_terrain")) then
-			work = smart_ini:r_string_ex("specific",job_name)
-			if (work) then
-				local ini_path = "scripts\\"..work
-				local fs = getFS()
-				if fs:exist("$game_config$",ini_path) ~= nil then
-					local job_ini_file = ini_file(ini_path)
-					night_job = job_ini_file:r_bool_ex("logic@"..job_name,"night_job", false)
-				end
-			end
-		end
+		printf("initing "..job_name)
+		specific_job_types_var = get_specific_job_types(smart, job_name)
 
-		name = gname.."_animpoint_"..i
-		if (night_job) then
-			printf("its a NIGHT job")
-			name = gname.."_animpoint_"..i
-			passive_job_type = JOB_TYPE_NIGHT
-		else
-			passive_job_type = JOB_TYPE_PLAIN
-		end
-
-		local job = {section = "logic@"..name, job_type_id = 7}
+		local job = {section = "logic@"..job_name, job_type_id = job_type_id, specific_job_types = specific_job_types_var}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
 
-		if (passive_job_type == JOB_TYPE_NIGHT) then
-			table.insert(smart.stalker_night_jobs, job)
-		end
-
-		table.insert(smart.stalker_plain_jobs, job)
+		classify_job_by_specific_job_types(smart, job)
 
 		if (ltx) then
-			job_ltx = [[
-[logic@%s]
-active = animpoint@%s
-
-[animpoint@%s]
-meet = meet@generic_animpoint
-cover_name = %s
-]]
-			job_ltx = strformat(job_ltx,name,name,name,name)
-
-			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
-				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
-			end
-
-			if (smart.def_restr) then
-				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
-			end
-
-			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
-				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
-			end
-
+			job_ltx = get_generic_animpoint_job_ltx(smart, job_name)
 			ltx = ltx.."\n\n"..job_ltx
 		end
 		i = i + 1
 	end
-	
-	-- surge
-	i = 1
+end
+
+local function init_animpoint_camper_jobs(smart, gname)
+	init_animpoint_jobs(smart, gname, "_animpoint_camp_", 11)
+end
+
+local function init_animpoint_rest_jobs(smart, gname)
+	init_animpoint_jobs(smart, gname, "_animpoint_rest_", 7)
+end
+
+local function init_animpoint_surge_jobs(smart, stalker_jobs, gname)
+	local name, job_ltx
+	local i = 1
+
 	while se_smart_cover.registered_smartcovers[gname.."_surge_animpoint_"..i] ~= nil do
 		name = gname.."_surge_animpoint_"..i
 		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 8})
 
 		if (ltx) then
-			job_ltx = [[
-[logic@%s]
-active = animpoint@%s
-
-[animpoint@%s]
-meet = meet@generic_animpoint
-cover_name = %s
-]]
-			job_ltx = strformat(job_ltx,name,name,name,name)
-
-			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
-				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
-			end
-
-			if (smart.def_restr) then
-				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
-			end
-
-			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
-				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
-			end
-
+			job_ltx = get_generic_animpoint_job_ltx(smart, name)
 			ltx = ltx.."\n\n"..job_ltx
 		end
 		i = i + 1
@@ -1282,7 +1304,6 @@ end
 
 local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	local work = smart_ini:r_string_ex(sect,work_field)
-	printf(sect.."---"..work_field)
 	if not (work) then
 		return
 	end
@@ -1306,7 +1327,6 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	local active_section = job_ini_file:r_string_ex(lsec,"active") or "nil"
 	local scheme = utils.get_scheme_by_section(active_section)
 	local job_type = job_type_by_scheme[scheme]
-	local job_type_id
 
 	if not (job_type) then
 		printf("gulag_general.add_exclusive_job(): Invalid job_type! smart=%s job_type = %s scheme = %s job=%s sect=%s",smart:name(),job_type,scheme,work,sect)
@@ -1320,26 +1340,14 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	end
 
 	local job_table
-	if (is_monster) then
-		job_table = smart.monster_jobs
-	elseif (is_heli) then
-		job_table = smart.heli_jobs
-	else
-		if (string.find(lsec, "camp_work") or string.find(lsec, "kamp")) then
-			job_type_id = 11
-		else
-			job_table = smart.stalker_exclusive_jobs
-		end
+	if (is_monster) then job_table = smart.monster_jobs
+	elseif (is_heli) then job_table = smart.heli_jobs
+	else job_table = smart.stalker_exclusive_jobs
 	end
 
 	if not (job_suitable) then
-		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true, job_type_id = job_type_id }
-		if (job_type_id == 11) then
-			rawset(smart.stalker_jobs, #smart.stalker_jobs + 1, new_job)
-			table.insert(smart.stalker_plain_jobs, new_job)
-		else
-			rawset(job_table, #job_table + 1, new_job)
-		end
+		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true}
+		rawset(job_table, #job_table + 1, new_job)
 
 		return
 	end
@@ -1347,13 +1355,10 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
 
 	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id }
-	if (job_type_id == 11) then
-		rawset(smart.stalker_jobs, #smart.stalker_jobs + 1, new_job)
-		table.insert(smart.stalker_plain_jobs, new_job)
-	else
-		rawset(job_table, #job_table + 1, new_job)
-	end
+	rawset(job_table, #job_table + 1, new_job)
+
 end
+
 ---------------------------------------------------------------------------------------
 -- LOAD SMART JOBS
 -- called in smart_terrain.script
@@ -1420,6 +1425,7 @@ use_text                       = nil
 
 	smart.stalker_jobs = {}
 	smart.stalker_plain_jobs = {}
+	smart.stalker_camp_jobs = {}
 	smart.stalker_night_jobs = {}
 
 	-- create heli jobs 
@@ -1437,7 +1443,9 @@ use_text                       = nil
 	init_collector_jobs(smart,gname)
 	init_walker_jobs(smart,stalker_guard_jobs,gname)
 	init_patrol_jobs(smart,stalker_guard_jobs,gname)
-	init_animpoint_jobs(smart, gname)
+	init_animpoint_camper_jobs(smart, gname)
+	init_animpoint_rest_jobs(smart, gname)
+	init_animpoint_surge_jobs(smart, stalker_surge_jobs, gname)
 	init_guard_jobs(smart,stalker_guard_jobs,gname)
 	init_sniper_jobs(smart,stalker_guard_jobs,gname)
 	init_camper_jobs(smart,gname)
@@ -1453,7 +1461,6 @@ use_text                       = nil
 	smart.monster_jobs = monster_jobs
 	smart.heli_jobs = heli_jobs
 
-	printf("HUA exclusives")
 	-- create exclusive jobs
 	local smart_ini = smart.ini
 	if (smart_ini:section_exist("smart_terrain")) then

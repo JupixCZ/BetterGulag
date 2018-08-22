@@ -25,8 +25,9 @@ local JOB_BEH = 12
 local JOB_TYPE_EXCLUSIVE = 400
 local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
-local JOB_TYPE_PASSIVE_PLAIN = 201
-local JOB_TYPE_PASSIVE_NIGHT = 202
+local JOB_TYPE_PLAIN = 201
+local JOB_TYPE_CAMP = 202
+local JOB_TYPE_NIGHT = 203
 local JOB_TYPE_GENERIC = 100
 
 nearest_to_actor_smart = {id = nil , dist = math.huge}
@@ -778,7 +779,7 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 	elseif (job_type == JOB_TYPE_PASSIVE) then
 		local passive_job_type = self:get_optimal_passive_job_type()
 
-		if (passive_job_type == JOB_TYPE_PASSIVE_PLAIN) then
+		if (passive_job_type == JOB_TYPE_PLAIN) then
 			jobs_table = self.stalker_plain_jobs
 		else
 			jobs_table = self.stalker_night_jobs
@@ -786,21 +787,17 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 
 		local found_free_preferred_jobs = table.getn(jobs_table) ~= 0 and table.getn(self:extract_free_jobs_only(jobs_table, npc_info)) ~= 0
 
-		printf("free jobs count: " .. table.getn(self:extract_free_jobs_only(jobs_table, npc_info)))
-		if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PASSIVE_PLAIN) then
-			printf("not found free NIGHT job, trying PLAIN")
+		if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PLAIN) then
 			jobs_table = self.stalker_plain_jobs
-			printf("plain jobs count: " .. table.getn(jobs_table))
 		end
 	else 
 		jobs_table = self.stalker_generic_jobs
 	end
 
-	-- rework all this shit - too many extracting dammit!
+	-- TODO rework all this shit - too many extracting dammit!
 	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
 	local free_jobs_count = table.getn(free_jobs)
 	if (free_jobs_count == 0) then
-		printf("no free jobs mate")
 		return nil
 	end
 
@@ -809,13 +806,13 @@ function se_smart_terrain:get_free_job(job_type, npc_info)
 end
 
 function se_smart_terrain:get_optimal_passive_job_type()
-	local optimal_passive_job_type = JOB_TYPE_PASSIVE_PLAIN
+	local optimal_passive_job_type = JOB_TYPE_PLAIN
 
 	if (in_time_interval(21, 7)) then
 		local night_job_chance = 75
 
 		if (self:roll(night_job_chance)) then
-			optimal_passive_job_type = JOB_TYPE_PASSIVE_NIGHT
+			optimal_passive_job_type = JOB_TYPE_NIGHT
 		end
 	end
 
