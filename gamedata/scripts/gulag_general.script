@@ -650,13 +650,31 @@ local function init_animpoint_jobs(smart,gname)
 	local name, job_ltx
 	local i = 1
 	local passive_job_type
+	local smart_ini = smart.ini
+	local work
+	local job_name
 
-	while ((se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i] ~= nil) or (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i .. "_xpn"] ~= nil)) do
-		printf("loading job " .. gname .. "_animpoint_" .. i)
+	while (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i] ~= nil) do
+		local night_job = false
+		job_name = gname .. "_animpoint_"..i
+
+		printf("loading job "..job_name)
+		if (smart_ini:section_exist("smart_terrain")) then
+			work = smart_ini:r_string_ex("specific",job_name)
+			if (work) then
+				local ini_path = "scripts\\"..work
+				local fs = getFS()
+				if fs:exist("$game_config$",ini_path) ~= nil then
+					local job_ini_file = ini_file(ini_path)
+					night_job = job_ini_file:r_bool_ex("logic@"..job_name,"night_job", false)
+				end
+			end
+		end
+
 		name = gname.."_animpoint_"..i
-		if (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i .. "_xpn"] ~= nil) then
+		if (night_job) then
 			printf("its a NIGHT job")
-			name = gname.."_animpoint_"..i .. "_xpn"
+			name = gname.."_animpoint_"..i
 			passive_job_type = JOB_TYPE_NIGHT
 		else
 			passive_job_type = JOB_TYPE_PLAIN
@@ -884,17 +902,17 @@ local function init_sniper_jobs(smart,stalker_jobs,gname)
 			end
 			
 			job_ltx = [[
-[logic@%s]
-active = camper@%s
+						[logic@%s]
+						active = camper@%s
 
-[camper@%s]
-meet = meet@generic_lager
-path_walk = sniper_%s_walk
-sniper = true
-radius = %s
-def_state_campering = %s
-def_state_campering_fire = %s
-]]
+						[camper@%s]
+						meet = meet@generic_lager
+						path_walk = sniper_%s_walk
+						sniper = true
+						radius = %s
+						def_state_campering = %s
+						def_state_campering_fire = %s
+			]]
 
 			job_ltx = strformat(job_ltx,name,name,name,i,radius,state,"hide_fire")
 
@@ -1264,6 +1282,7 @@ end
 
 local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
 	local work = smart_ini:r_string_ex(sect,work_field)
+	printf(sect.."---"..work_field)
 	if not (work) then
 		return
 	end
@@ -1434,6 +1453,7 @@ use_text                       = nil
 	smart.monster_jobs = monster_jobs
 	smart.heli_jobs = heli_jobs
 
+	printf("HUA exclusives")
 	-- create exclusive jobs
 	local smart_ini = smart.ini
 	if (smart_ini:section_exist("smart_terrain")) then
