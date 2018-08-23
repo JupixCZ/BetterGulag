@@ -711,27 +711,35 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			return possible_exclusive_job
 		end
 
-		local job_type = gulag_utils.get_optimal_job_type(self, npc_info)
+		local job_type = gulag_utils.get_ideal_job_type(self, npc_info, self.stalker_guard_jobs, self.stalker_passive_jobs)
+
+		local tried_guard_job = false
+		local tried_passive_job = false
 
 		--TODO toto prenest do gulag_utils
 		local job
-		while (job == nil and job_type > 0) do
+		while (job == nil and (not tried_guard_job or not tried_passive_job)) do
 			job = gulag_utils.get_free_job(self, job_type, npc_info)
 
 			if (job == nil) then
-				job_type = job_type - 100
+				if (job_type == JOB_TYPE_GUARD) then
+					tried_guard_job = true
+					job_type = JOB_TYPE_PASSIVE
+				elseif (job_type == JOB_TYPE_PASSIVE) then
+					tried_passive_job = true
+					job_type = JOB_TYPE_GUARD
+				end
 			end
 		end
 
 		if (job == nil) then
-			return
-		else
-			-- for debugging purpose only, for production user (100, 1200)
-			local job_persist = math.random(30,200)
-			npc_info.job_persist = job_persist
-
-			return job
+			job = gulag_utils.get_free_job(self, JOB_TYPE_GENERIC, npc_info)
 		end
+		-- for debugging purpose only, for production user (100, 1200)
+		local job_persist = math.random(30, 200)
+		npc_info.job_persist = job_persist
+
+		return job
 	end
 end
 

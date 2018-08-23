@@ -27,11 +27,13 @@ function get_optimal_passive_job_type()
     local optimal_passive_job_type = JOB_TYPE_PLAIN
 
     printf(level.get_weather())
+    printf("choosing job")
     if (in_time_interval(21, 7)) then
         local night_job_chance = 80
 
         if (roll(night_job_chance)) then
             optimal_passive_job_type = JOB_TYPE_NIGHT
+            printf("NIGHT JOB!")
         end
     end
 
@@ -59,32 +61,20 @@ function extract_free_jobs_only(smart, jobs, npc_info)
     return free_jobs
 end
 
--- TODO refaktor půjde efektivne rozdelit do podmetod a reusovat
-function get_optimal_job_type(smart, npc_info)
-    local job_guard_count = table.getn(smart.stalker_guard_jobs) - table.getn(extract_free_jobs_only(smart, smart.stalker_guard_jobs, npc_info))
-    local job_passive_count = table.getn(smart.stalker_plain_jobs) - table.getn(extract_free_jobs_only(smart, smart.stalker_plain_jobs, npc_info))
-    local guard_job_chance = 90
+function get_ideal_job_type(smart, npc_info, guard_jobs, passive_jobs)
+    local job_guard_count = table.getn(guard_jobs) - table.getn(extract_free_jobs_only(smart, guard_jobs, npc_info))
+    local job_passive_count = table.getn(passive_jobs) - table.getn(extract_free_jobs_only(smart, passive_jobs, npc_info))
 
-    guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 5)
+    local guard_job_chance = 90 - (job_guard_count * 40) + (job_passive_count * 5)
 
-    if (guard_job_chance < 10) then
-        guard_job_chance = 10
-    elseif (guard_job_chance > 90) then
-        guard_job_chance = 90
+    if (guard_job_chance < 10) then guard_job_chance = 10
+    elseif (guard_job_chance > 90) then guard_job_chance = 90
     end
 
-    local rand_job_type_index = math.random(1, 100)
-
-    local optimal_job_type = JOB_TYPE_GUARD
-
-    if (rand_job_type_index > guard_job_chance) then
-        local free_passive_job = get_free_job(smart, JOB_TYPE_PASSIVE, npc_info)
-        if (free_passive_job ~= nil) then
-            optimal_job_type = JOB_TYPE_PASSIVE
-        end
+    if (roll(guard_job_chance)) then return JOB_TYPE_GUARD
+    else return JOB_TYPE_PASSIVE
     end
 
-    return optimal_job_type
 end
 
 -- TODO heavy refactor

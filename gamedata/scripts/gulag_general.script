@@ -592,6 +592,7 @@ local function init_collector_jobs(smart,gname)
 
 		local job = {section = "logic@"..name, job_type_id = 4}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
+		table.insert(smart.stalker_passive_jobs, job)
 		table.insert(smart.stalker_plain_jobs, job)
 
 		if (ltx) then
@@ -741,6 +742,7 @@ local function init_animpoint_jobs(smart, gname, job_suffix, job_type_id)
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
 
 		classify_job_by_specific_job_types(smart, job)
+		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
 			job_ltx = get_generic_animpoint_job_ltx(smart, job_name)
@@ -975,6 +977,7 @@ local function init_camper_jobs(smart,gname)
 		local job = {section = "logic@"..name, job_type_id = 12}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
 		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
 			ptr = patrol(name)
@@ -1045,6 +1048,7 @@ local function init_beh_jobs(smart,gname)
 		local job = {section = "logic@"..name, job_type_id = 13}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
 		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -1424,10 +1428,12 @@ use_text                       = nil
 	local heli_jobs = {}
 
 	smart.stalker_jobs = {}
+	smart.stalker_passive_jobs = {}
 	smart.stalker_plain_jobs = {}
 	smart.stalker_camp_jobs = {}
 	smart.stalker_night_jobs = {}
 
+	-- TODO pořádek v jobs
 	-- create heli jobs 
 	init_heli_move_jobs(smart,heli_jobs,gname)
 	init_heli_move_point_jobs(smart,heli_jobs,gname)
