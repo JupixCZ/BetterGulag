@@ -711,11 +711,12 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			return possible_exclusive_job
 		end
 
-		local job_type = self:get_optimal_job_type(npc_info)
+		local job_type = gulag_utils.get_optimal_job_type(self, npc_info)
 
+		--TODO toto prenest do gulag_utils
 		local job
 		while (job == nil and job_type > 0) do
-			job = self:get_free_job(job_type, npc_info)
+			job = gulag_utils.get_free_job(self, job_type, npc_info)
 
 			if (job == nil) then
 				job_type = job_type - 100
@@ -724,12 +725,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 
 		if (job == nil) then
 			return
-		else 
-			local text_job_type = "GUARD"
-			if (job_type == JOB_TYPE_PASSIVE) then
-				text_job_type = "PASSIVE"
-			end
-
+		else
 			-- for debugging purpose only, for production user (100, 1200)
 			local job_persist = math.random(30,200)
 			npc_info.job_persist = job_persist
@@ -752,117 +748,6 @@ function se_smart_terrain:try_get_exclusive_job(npc_info)
 	end
 
 	return
-end
-
-function se_smart_terrain:extract_free_jobs_only(former_jobs, npc_info)
-	local free_jobs = {}
-	local free_jobs_index = 1
-
-	for index, job in ipairs(former_jobs) do 
-		local current_occupying_npc_id = self.npc_by_job_section[job.section]
-		
-		-- countering strange behaviour after spawn (npc is occupying job but stil his job == null)
-		if ((current_occupying_npc_id == nil or current_occupying_npc_id == npc_info.se_obj.id) and job_avail_to_npc(npc_info, job, self)) then
-			free_jobs[free_jobs_index] = job 
-			free_jobs_index = free_jobs_index + 1
-		end
-	end
-
-	return free_jobs
-end
-
-function se_smart_terrain:get_free_job(job_type, npc_info)
-	local jobs_table
-
-	if (job_type == JOB_TYPE_GUARD) then
-		jobs_table = self.stalker_guard_jobs
-	elseif (job_type == JOB_TYPE_PASSIVE) then
-		local passive_job_type = self:get_optimal_passive_job_type()
-
-		if (passive_job_type == JOB_TYPE_PLAIN) then
-			jobs_table = self.stalker_plain_jobs
-		else
-			jobs_table = self.stalker_night_jobs
-		end
-
-		local found_free_preferred_jobs = table.getn(jobs_table) ~= 0 and table.getn(self:extract_free_jobs_only(jobs_table, npc_info)) ~= 0
-
-		if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PLAIN) then
-			jobs_table = self.stalker_plain_jobs
-		end
-	else 
-		jobs_table = self.stalker_generic_jobs
-	end
-
-	-- TODO rework all this shit - too many extracting dammit!
-	local free_jobs = self:extract_free_jobs_only(jobs_table, npc_info)
-	local free_jobs_count = table.getn(free_jobs)
-	if (free_jobs_count == 0) then
-		return nil
-	end
-
-	local job_rand_index = math.random(1, free_jobs_count)
-	return free_jobs[job_rand_index]
-end
-
-function se_smart_terrain:get_optimal_passive_job_type()
-	local optimal_passive_job_type = JOB_TYPE_PLAIN
-
-	if (in_time_interval(21, 7)) then
-		local night_job_chance = 75
-
-		if (self:roll(night_job_chance)) then
-			optimal_passive_job_type = JOB_TYPE_NIGHT
-		end
-	end
-
-	return optimal_passive_job_type
-end
-
-function se_smart_terrain:extract_preferred_passive_jobs(jobs, preferred_pasive_job_type)
-	local preferred_passive_jobs = {}
-	local jobs_index = 1
-
-	for index, job in ipairs(jobs) do
-		if (job.passive_job_type == preferred_pasive_job_type) then
-			preferred_passive_jobs[jobs_index] = job
-			jobs_index = jobs_index + 1
-		end
-	end
-
-	return preferred_passive_jobs
-end
-
-function se_smart_terrain:get_optimal_job_type(npc_info)
-	local job_guard_count = table.getn(self.stalker_guard_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_guard_jobs, npc_info))
-	local job_passive_count = table.getn(self.stalker_plain_jobs) - table.getn(self:extract_free_jobs_only(self.stalker_plain_jobs, npc_info))
-	local guard_job_chance = 90
-
-	guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 5)
-
-	if (guard_job_chance < 10) then
-		guard_job_chance = 10
-	elseif (guard_job_chance > 90) then
-		guard_job_chance = 90
-	end
-
-	local rand_job_type_index = math.random(1, 100)
-
-	local optimal_job_type = JOB_TYPE_GUARD
-
-	if (rand_job_type_index > guard_job_chance) then
-		local free_passive_job = self:get_free_job(JOB_TYPE_PASSIVE, npc_info)
-		if (free_passive_job ~= nil) then
-			optimal_job_type = JOB_TYPE_PASSIVE
-		end
-	end
-
-	local text_job_type = "GUARD"
-	if (optimal_job_type == JOB_TYPE_PASSIVE) then
-		text_job_type = "PASSIVE"
-	end
-
-	return optimal_job_type
 end
 		
 function se_smart_terrain:select_regular_npc_job(npc_info,now,surge_started)
@@ -981,10 +866,6 @@ function se_smart_terrain:select_regular_npc_job(npc_info,now,surge_started)
 	end
 
 	return new_job
-end
-
-function se_smart_terrain:roll(chance_percentile)
-	return math.random(1, 100) <= chance_percentile
 end
 
 function se_smart_terrain:getJob(obj_id)

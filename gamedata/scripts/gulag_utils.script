@@ -1,0 +1,123 @@
+local JOB_TYPE_GUARD = 300
+local JOB_TYPE_PASSIVE = 200
+local JOB_TYPE_PLAIN = 201
+local JOB_TYPE_CAMP = 202
+local JOB_TYPE_NIGHT = 203
+
+local function roll(chance_percentile)
+    return math.random(1, 100) <= chance_percentile
+end
+
+local function job_avail_to_npc(npc_info, job, smart)
+    --[[
+    if (smart.dead_time[job.section]) then
+        return false
+    end
+    --]]
+
+    local precond = gulag_general.get_job_precondition(job)
+    if (precond) then
+        return precond(npc_info.se_obj, smart, job, npc_info)
+    end
+
+    return true
+end
+
+function get_optimal_passive_job_type()
+    local optimal_passive_job_type = JOB_TYPE_PLAIN
+
+    printf(level.get_weather())
+    if (in_time_interval(21, 7)) then
+        local night_job_chance = 80
+
+        if (roll(night_job_chance)) then
+            optimal_passive_job_type = JOB_TYPE_NIGHT
+        end
+    end
+
+    return optimal_passive_job_type
+end
+
+function has_free_jobs(smart, jobs, npc_info)
+    return table.getn(extract_free_jobs_only(smart, jobs, npc_info)) ~= 0
+end
+
+function extract_free_jobs_only(smart, jobs, npc_info)
+    local free_jobs = {}
+    local free_jobs_index = 1
+
+    for index, job in ipairs(jobs) do
+        local current_occupying_npc_id = smart.npc_by_job_section[job.section]
+
+        -- countering strange behaviour after spawn (npc is occupying job but stil his job == null)
+        if ((current_occupying_npc_id == nil or current_occupying_npc_id == npc_info.se_obj.id) and job_avail_to_npc(npc_info, job, smart)) then
+            free_jobs[free_jobs_index] = job
+            free_jobs_index = free_jobs_index + 1
+        end
+    end
+
+    return free_jobs
+end
+
+-- TODO refaktor půjde efektivne rozdelit do podmetod a reusovat
+function get_optimal_job_type(smart, npc_info)
+    local job_guard_count = table.getn(smart.stalker_guard_jobs) - table.getn(extract_free_jobs_only(smart, smart.stalker_guard_jobs, npc_info))
+    local job_passive_count = table.getn(smart.stalker_plain_jobs) - table.getn(extract_free_jobs_only(smart, smart.stalker_plain_jobs, npc_info))
+    local guard_job_chance = 90
+
+    guard_job_chance = guard_job_chance - (job_guard_count * 40) + (job_passive_count * 5)
+
+    if (guard_job_chance < 10) then
+        guard_job_chance = 10
+    elseif (guard_job_chance > 90) then
+        guard_job_chance = 90
+    end
+
+    local rand_job_type_index = math.random(1, 100)
+
+    local optimal_job_type = JOB_TYPE_GUARD
+
+    if (rand_job_type_index > guard_job_chance) then
+        local free_passive_job = get_free_job(smart, JOB_TYPE_PASSIVE, npc_info)
+        if (free_passive_job ~= nil) then
+            optimal_job_type = JOB_TYPE_PASSIVE
+        end
+    end
+
+    return optimal_job_type
+end
+
+-- TODO heavy refactor
+function get_free_job(smart, job_type, npc_info)
+    local jobs_table
+
+    if (job_type == JOB_TYPE_GUARD) then
+        jobs_table = smart.stalker_guard_jobs
+    elseif (job_type == JOB_TYPE_PASSIVE) then
+        local passive_job_type = get_optimal_passive_job_type()
+
+        if (passive_job_type == JOB_TYPE_PLAIN) then
+            jobs_table = smart.stalker_plain_jobs
+        else
+            jobs_table = smart.stalker_night_jobs
+        end
+
+        local found_free_preferred_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
+
+        if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PLAIN) then
+            jobs_table = smart.stalker_plain_jobs
+        end
+    else
+        jobs_table = smart.stalker_generic_jobs
+    end
+
+    -- TODO rework all this shit - too many extracting dammit!
+    local free_jobs = extract_free_jobs_only(smart, jobs_table, npc_info)
+    local free_jobs_count = table.getn(free_jobs)
+    if (free_jobs_count == 0) then
+        return nil
+    end
+
+    local job_rand_index = math.random(1, free_jobs_count)
+    return free_jobs[job_rand_index]
+end

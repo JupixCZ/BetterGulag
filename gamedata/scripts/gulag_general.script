@@ -1302,7 +1302,7 @@ mute 			  = false
 	end
 end
 
-local function add_exclusive_job(smart,sect, work_field, smart_ini, job_table)
+local function add_exclusive_job(smart,sect, work_field, smart_ini)
 	local work = smart_ini:r_string_ex(sect,work_field)
 	if not (work) then
 		return
@@ -1469,12 +1469,12 @@ use_text                       = nil
 			local id, value = "",""
 			for i=0,n-1 do
 				result, id, value  = smart_ini:r_line("exclusive",i,"","")
-				add_exclusive_job(smart,"exclusive", id, smart_ini, job_table)
+				add_exclusive_job(smart,"exclusive", id, smart_ini)
 			end
 		else
 			local num = 1
 			while smart_ini:line_exist("smart_terrain", "work"..num) do
-				add_exclusive_job(smart,"smart_terrain", "work"..num, smart_ini, job_table)
+				add_exclusive_job(smart,"smart_terrain", "work"..num, smart_ini)
 				num = num + 1
 			end
 		end
