@@ -17,6 +17,9 @@ local WEATHER_THUNDER = "thunder"
 local WEATHER_VERYFOGGY = "veryfoggy"
 local WEATHER_VERYFOGGY_NO_SUN = "veryfoggy_no_sun"
 
+local TIME_DAY = "day"
+local TIME_NIGHT = "night"
+
 local function roll(chance_percentile)
     return math.random(1, 100) <= chance_percentile
 end
@@ -48,8 +51,6 @@ end
 
 function get_optimal_passive_job_type()
     local optimal_passive_job_type = JOB_TYPE_PLAIN
-
-    printf("choosing job")
 
     local weather_string = level.get_weather()
     local day = is_night() == false
@@ -104,6 +105,32 @@ function get_optimal_passive_job_type()
     return optimal_passive_job_type
 end
 
+function get_weather_simple_string(weather_string)
+    if (string.match(weather_string, WEATHER_CLEAR)) then
+        return WEATHER_CLEAR
+    elseif (string.match(weather_string, WEATHER_PARTLY)) then
+        return WEATHER_PARTLY
+    elseif (string.match(weather_string, WEATHER_CLOUDY)) then
+        return WEATHER_CLOUDY
+    elseif (string.match(weather_string, WEATHER_CLOUDY_NO_SUN)) then
+        return WEATHER_CLOUDY_NO_SUN
+    elseif (string.match(weather_string, WEATHER_FOGGY)) then
+        return WEATHER_FOGGY
+    elseif (string.match(weather_string, WEATHER_FOGGY_NO_SUN)) then
+        return WEATHER_FOGGY_NO_SUN
+    elseif (string.match(weather_string, WEATHER_THUNDER)) then
+        return WEATHER_THUNDER
+    elseif (string.match(weather_string, WEATHER_VERYFOGGY)) then
+        return WEATHER_VERYFOGGY
+    elseif (string.match(weather_string, WEATHER_RAIN)) then
+        return WEATHER_RAIN
+    elseif (string.match(weather_string, WEATHER_VERYFOGGY_NO_SUN)) then
+        return WEATHER_VERYFOGGY_NO_SUN
+    elseif (string.match(weather_string, WEATHER_STORM)) then
+        return WEATHER_STORM
+    end
+end
+
 function has_free_jobs(smart, jobs, npc_info)
     return table.getn(extract_free_jobs_only(smart, jobs, npc_info)) ~= 0
 end
@@ -125,7 +152,7 @@ function extract_free_jobs_only(smart, jobs, npc_info)
     return free_jobs
 end
 
-function get_ideal_job_type(smart, npc_info, guard_jobs, passive_jobs)
+function is_should_take_guard_job(smart, npc_info, guard_jobs, passive_jobs)
     local job_guard_count = table.getn(guard_jobs) - table.getn(extract_free_jobs_only(smart, guard_jobs, npc_info))
     local job_passive_count = table.getn(passive_jobs) - table.getn(extract_free_jobs_only(smart, passive_jobs, npc_info))
 
@@ -135,48 +162,102 @@ function get_ideal_job_type(smart, npc_info, guard_jobs, passive_jobs)
     elseif (guard_job_chance > 90) then guard_job_chance = 90
     end
 
-    if (roll(guard_job_chance)) then return JOB_TYPE_GUARD
-    else return JOB_TYPE_PASSIVE
-    end
-
+    return roll(guard_job_chance)
 end
 
--- TODO heavy refactor
+function decide_optimal_passive_job_type(smart, npc_info)
+    local jobs_table
+
+    local optimal_job_type = get_optimal_passive_job_type()
+
+    if (optimal_job_type == JOB_TYPE_PLAIN) then
+        jobs_table = smart.stalker_plain_jobs
+    elseif (optimal_job_type == JOB_TYPE_CAMP) then
+        jobs_table = smart.stalker_camp_jobs
+    elseif (optimal_job_type == JOB_TYPE_RAINCOVER) then
+        -- RAINCOVER not implemented yet
+        jobs_table = smart.stalker_night_jobs
+        printf("[INFO] Should take raincover job, not implemented yet.")
+    else
+        jobs_table = smart.stalker_night_jobs
+    end
+
+    local found_free_optimal_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
+
+    if (not found_free_optimal_jobs) then
+        if (optimal_job_type ~= JOB_TYPE_PLAIN) then
+            jobs_table = smart.stalker_plain_jobs
+
+            local found_free_plain_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
+            if (not found_free_plain_jobs) then
+                jobs_table = smart.stalker_generic_jobs
+                printf("[INFO] No free job, assigning generic job.")
+            end
+        else
+            jobs_table = smart.stalker_generic_jobs
+            printf("[INFO] No free job, assigning generic job.")
+        end
+    end
+
+    return jobs_table
+end
+
 function get_free_job(smart, job_type, npc_info)
     local jobs_table
 
     if (job_type == JOB_TYPE_GUARD) then
         jobs_table = smart.stalker_guard_jobs
     elseif (job_type == JOB_TYPE_PASSIVE) then
-        local passive_job_type = get_optimal_passive_job_type()
-
-        if (passive_job_type == JOB_TYPE_PLAIN) then
-            jobs_table = smart.stalker_plain_jobs
-        elseif (passive_job_type == JOB_TYPE_CAMP) then
-            jobs_table = smart.stalker_camp_jobs
-        elseif (passive_job_type == JOB_TYPE_RAINCOVER) then
-            -- RAINCOVER not implemented yet
-            jobs_table = smart.stalker_night_jobs
-        else
-            jobs_table = smart.stalker_night_jobs
-        end
-
-        local found_free_preferred_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
-
-        if (not found_free_preferred_jobs and passive_job_type ~= JOB_TYPE_PLAIN) then
-            jobs_table = smart.stalker_plain_jobs
-        end
+        jobs_table = decide_optimal_passive_job_type(smart, npc_info)
     else
         jobs_table = smart.stalker_generic_jobs
+        printf("[WARN] Unknow job type, assigning generic job.")
     end
 
-    -- TODO rework all this shit - too many extracting dammit!
     local free_jobs = extract_free_jobs_only(smart, jobs_table, npc_info)
     local free_jobs_count = table.getn(free_jobs)
     if (free_jobs_count == 0) then
+        printf("[ERROR] Still couldn't find any free job! Returning nil.")
         return nil
     end
 
     local job_rand_index = math.random(1, free_jobs_count)
     return free_jobs[job_rand_index]
+end
+
+function is_external_conditions_changed(npc_info)
+    local current_weather = get_weather_simple_string(level.get_weather())
+    local current_time_day
+    if (is_night()) then current_time_day = TIME_NIGHT else current_time_day = TIME_DAY end
+
+    if (npc_info.current_weather == nil) then
+        npc_info.current_weather = current_weather
+    end
+
+    if (npc_info.current_time_day == nil) then
+        npc_info.current_time_day = current_time_day
+    end
+
+    --printf("[INFO] Curr weather: " .. current_weather .. ", npc weather: " .. npc_info.current_weather)
+    --printf("[INFO] Curr timeday: " .. current_time_day .. ", npc timeday: " .. npc_info.current_time_day)
+
+    if (current_weather ~= npc_info.current_weather or current_time_day ~= npc_info.current_time_day) then
+        npc_info.current_weather = current_weather
+        npc_info.current_time_day = current_time_day
+
+        --printf("[INFO] External conditions changed.")
+        return true
+    else
+        return false
+    end
+end
+
+function npc_re_evaluate_current_job_persistance(persistance)
+    local cut_percentage = math.random(40, 80)
+    local new_persistance = persistance * cut_percentage / 100
+
+    if (new_persistance < 1) then new_persistance = 1 end
+
+    --printf("[INFO] Cutting persist from " .. persistance .. " to " .. new_persistance .. "(" .. cut_percentage .. "%)")
+    return new_persistance
 end

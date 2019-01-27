@@ -696,7 +696,13 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 	if (npc_info.job and npc_info.job_persist ~= nil) then
 
 		if (npc_info.job_persist > 0) then
-			npc_info.job_persist = npc_info.job_persist - 1
+			-- do not check external conditions everytime, performance affected
+			if (npc_info.job_persist % 25 == 0 and gulag_utils.is_external_conditions_changed(npc_info)) then
+				npc_info.job_persist = gulag_utils.npc_re_evaluate_current_job_persistance(npc_info.job_persist)
+			else
+				npc_info.job_persist = npc_info.job_persist - 1
+			end
+
 			return npc_info.job
 		end
 
@@ -711,7 +717,10 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 			return possible_exclusive_job
 		end
 
-		local job_type = gulag_utils.get_ideal_job_type(self, npc_info, self.stalker_guard_jobs, self.stalker_passive_jobs)
+		local should_take_guard_job = gulag_utils.is_should_take_guard_job(self, npc_info, self.stalker_guard_jobs, self.stalker_passive_jobs)
+
+		local job_type
+		if (should_take_guard_job) then job_type = JOB_TYPE_GUARD else job_type = JOB_TYPE_PASSIVE end
 
 		local tried_guard_job = false
 		local tried_passive_job = false
@@ -734,8 +743,10 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 
 		if (job == nil) then
 			job = gulag_utils.get_free_job(self, JOB_TYPE_GENERIC, npc_info)
+			printf("[WARN] Couldn't find any free job, must take generic one.")
 		end
-		-- for debugging purpose only, for production user (100, 1200)
+
+		-- for debugging purpose only, for production use (100, 1200)
 		local job_persist = math.random(30, 200)
 		npc_info.job_persist = job_persist
 
