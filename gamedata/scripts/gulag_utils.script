@@ -3,9 +3,32 @@ local JOB_TYPE_PASSIVE = 200
 local JOB_TYPE_PLAIN = 201
 local JOB_TYPE_CAMP = 202
 local JOB_TYPE_NIGHT = 203
+local JOB_TYPE_RAINCOVER = 204
+
+local WEATHER_CLEAR = "clear"
+local WEATHER_PARTLY = "partly"
+local WEATHER_CLOUDY = "cloudy"
+local WEATHER_CLOUDY_NO_SUN = "cloudy_no_sun"
+local WEATHER_FOGGY = "foggy"
+local WEATHER_FOGGY_NO_SUN = "foggy_no_sun"
+local WEATHER_RAIN = "rain"
+local WEATHER_STORM = "storm"
+local WEATHER_THUNDER = "thunder"
+local WEATHER_VERYFOGGY = "veryfoggy"
+local WEATHER_VERYFOGGY_NO_SUN = "veryfoggy_no_sun"
 
 local function roll(chance_percentile)
     return math.random(1, 100) <= chance_percentile
+end
+
+local function is_night()
+    return in_time_interval(21, 7)
+end
+
+local function is_weather_bad(weather_string)
+    return string.match(weather_string, WEATHER_RAIN)
+            or string.match(weather_string, WEATHER_STORM)
+            or string.match(weather_string, WEATHER_THUNDER)
 end
 
 local function job_avail_to_npc(npc_info, job, smart)
@@ -26,15 +49,56 @@ end
 function get_optimal_passive_job_type()
     local optimal_passive_job_type = JOB_TYPE_PLAIN
 
-    printf(level.get_weather())
     printf("choosing job")
-    if (in_time_interval(21, 7)) then
-        local night_job_chance = 80
 
-        if (roll(night_job_chance)) then
-            optimal_passive_job_type = JOB_TYPE_NIGHT
-            printf("NIGHT JOB!")
-        end
+    local weather_string = level.get_weather()
+    local day = is_night() == false
+
+    local primary_job_type = JOB_TYPE_PLAIN
+    local primary_job_chance = 0
+
+    local alt_job_type
+
+    if (day) then
+        if is_weather_bad(weather_string) then alt_job_type = JOB_TYPE_RAINCOVER else alt_job_type = JOB_TYPE_CAMP end
+    else
+    -- might be raincover_night?
+        if is_weather_bad(weather_string) then alt_job_type = JOB_TYPE_RAINCOVER else alt_job_type = JOB_TYPE_NIGHT end
+    end
+
+    if (string.match(weather_string, WEATHER_CLEAR)) then
+        if (day) then primary_job_chance = 100 else primary_job_chance = 35 end
+    elseif (string.match(weather_string, WEATHER_PARTLY)) then
+        if (day) then primary_job_chance = 100 else primary_job_chance = 30 end
+    elseif (string.match(weather_string, WEATHER_CLOUDY)) then
+        if (day) then primary_job_chance = 80 else primary_job_chance = 25 end
+    elseif (string.match(weather_string, WEATHER_CLOUDY_NO_SUN)) then
+        if (day) then primary_job_chance = 75 else primary_job_chance = 25 end
+    elseif (string.match(weather_string, WEATHER_FOGGY)) then
+        if (day) then primary_job_chance = 70 else primary_job_chance = 20 end
+    elseif (string.match(weather_string, WEATHER_FOGGY_NO_SUN)) then
+        if (day) then primary_job_chance = 65 else primary_job_chance = 20 end
+    elseif (string.match(weather_string, WEATHER_THUNDER)) then
+        if (day) then primary_job_chance = 60 else primary_job_chance = 15 end
+    elseif (string.match(weather_string, WEATHER_VERYFOGGY)) then
+        if (day) then primary_job_chance = 40 else primary_job_chance = 10 end
+    elseif (string.match(weather_string, WEATHER_RAIN)) then
+        if (day) then primary_job_chance = 30 else primary_job_chance = 10 end
+    elseif (string.match(weather_string, WEATHER_VERYFOGGY_NO_SUN)) then
+        if (day) then primary_job_chance = 25 else primary_job_chance = 10 end
+    elseif (string.match(weather_string, WEATHER_STORM)) then
+        primary_job_chance = 5
+    end
+
+    printf("Weather: " .. weather_string .. " , rolling for job " .. primary_job_type .. " with a chance of " .. primary_job_chance .. "%")
+
+    -- rolling for job type
+    if (roll(primary_job_chance)) then
+        optimal_passive_job_type = primary_job_type
+        printf("TAKING THE JOB!")
+    else
+        optimal_passive_job_type = alt_job_type
+        printf("TAKING ALTERNATIVE JOB!")
     end
 
     return optimal_passive_job_type
@@ -88,6 +152,11 @@ function get_free_job(smart, job_type, npc_info)
 
         if (passive_job_type == JOB_TYPE_PLAIN) then
             jobs_table = smart.stalker_plain_jobs
+        elseif (passive_job_type == JOB_TYPE_CAMP) then
+            jobs_table = smart.stalker_camp_jobs
+        elseif (passive_job_type == JOB_TYPE_RAINCOVER) then
+            -- RAINCOVER not implemented yet
+            jobs_table = smart.stalker_night_jobs
         else
             jobs_table = smart.stalker_night_jobs
         end
