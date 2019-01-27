@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Lua Library" type="Lua">
+    <CLASSES>
+      <root url="file://D:/Docs/Dokumenty/STALKER/tools/CoC_SDK_editors/editors/gamedata/scripts" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
