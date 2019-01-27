@@ -94,7 +94,7 @@ local job_type_by_scheme = {
 	["heli_move"]		= "heli_path_job"
 }
 
-local JOB_TYPE_PLAIN = "plain_job"
+local JOB_TYPE_EXTERIOR = "exterior_job"
 local JOB_TYPE_CAMP = "camp_job"
 local JOB_TYPE_NIGHT = "night_job"
 
@@ -377,8 +377,8 @@ local function get_specific_job_types(smart, job_name)
 		return specific_job_types
 	end
 
-	local plain_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_PLAIN, false)
-	if plain_job then table.insert(specific_job_types, JOB_TYPE_PLAIN) end
+	local exterior_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_EXTERIOR, false)
+	if exterior_job then table.insert(specific_job_types, JOB_TYPE_EXTERIOR) end
 
 	local camp_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_CAMP, false)
 	if camp_job then table.insert(specific_job_types, JOB_TYPE_CAMP) end
@@ -393,9 +393,9 @@ local function classify_job_by_specific_job_types(smart, job)
 	local specific_job_types = job.specific_job_types
 
 	for index, specific_job_type in ipairs(specific_job_types) do
-		if specific_job_type == JOB_TYPE_PLAIN then
-			table.insert(smart.stalker_plain_jobs, job)
-			printf(JOB_TYPE_PLAIN)
+		if specific_job_type == JOB_TYPE_EXTERIOR then
+			table.insert(smart.stalker_exterior_jobs, job)
+			printf(JOB_TYPE_EXTERIOR)
 		elseif specific_job_type == JOB_TYPE_CAMP then
 			table.insert(smart.stalker_camp_jobs, job)
 			printf(JOB_TYPE_CAMP)
@@ -593,7 +593,7 @@ local function init_collector_jobs(smart,gname)
 		local job = {section = "logic@"..name, job_type_id = 4}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
 		table.insert(smart.stalker_passive_jobs, job)
-		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_exterior_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -742,6 +742,8 @@ local function init_animpoint_jobs(smart, gname, job_suffix, job_type_id)
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
 
 		classify_job_by_specific_job_types(smart, job)
+
+		-- for counting guard X passive only
 		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
@@ -976,7 +978,7 @@ local function init_camper_jobs(smart,gname)
 
 		local job = {section = "logic@"..name, job_type_id = 12}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
-		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_exterior_jobs, job)
 		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
@@ -1047,7 +1049,7 @@ local function init_beh_jobs(smart,gname)
 
 		local job = {section = "logic@"..name, job_type_id = 13}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_exterior_jobs, job)
 		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
@@ -1078,7 +1080,7 @@ meet = meet@generic_lager
 
 		local job = {section = "logic@"..name, job_type_id = 14}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_exterior_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -1107,7 +1109,7 @@ meet = meet@generic_lager
 
 		local job = {section = "logic@"..name, job_type_id = 15}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_plain_jobs, job)
+		table.insert(smart.stalker_exterior_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -1429,7 +1431,7 @@ use_text                       = nil
 
 	smart.stalker_jobs = {}
 	smart.stalker_passive_jobs = {}
-	smart.stalker_plain_jobs = {}
+	smart.stalker_exterior_jobs = {}
 	smart.stalker_camp_jobs = {}
 	smart.stalker_night_jobs = {}
 

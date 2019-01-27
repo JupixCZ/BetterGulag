@@ -3,11 +3,15 @@
   <component name="BookmarkManager">
     <bookmark url="file://$PROJECT_DIR$/gamedata/scripts/smart_terrain.script" line="1493" />
     <bookmark url="file://D:/Docs/Dokumenty/STALKER/tools/CoC_SDK_editors/editors/gamedata/scripts/xr_animpoint.script" line="467" />
-    <bookmark url="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script" line="1326" />
-    <bookmark url="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script" line="754" />
+    <bookmark url="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script" line="756" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="dbe4cec3-4259-40d3-b26a-68e0cf93a6f9" name="Default" comment="" />
+    <list default="true" id="dbe4cec3-4259-40d3-b26a-68e0cf93a6f9" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx" afterPath="$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gamedata/scripts/gulag_general.script" afterPath="$PROJECT_DIR$/gamedata/scripts/gulag_general.script" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gamedata/scripts/gulag_utils.script" afterPath="$PROJECT_DIR$/gamedata/scripts/gulag_utils.script" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gamedata/scripts/smart_terrain.script" afterPath="$PROJECT_DIR$/gamedata/scripts/smart_terrain.script" />
+    </list>
     <ignored path="BetterGulag.iws" />
     <ignored path=".idea/workspace.xml" />
     <ignored path="$PROJECT_DIR$/out/" />
@@ -39,21 +43,21 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="gulag_general.script" pinned="false" current-in-tab="false">
+      <file leaf-file-name="gulag_general.script" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="738" column="37" selection-start-line="738" selection-start-column="33" selection-end-line="738" selection-end-column="37" />
+            <state vertical-scroll-proportion="0.30252102">
+              <caret line="1455" column="4" selection-start-line="1455" selection-start-column="4" selection-end-line="1455" selection-end-column="4" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="smart_terrain.script" pinned="false" current-in-tab="true">
+      <file leaf-file-name="smart_terrain.script" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/gamedata/scripts/smart_terrain.script">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-0.46372688">
-              <caret line="699" column="41" selection-start-line="699" selection-start-column="41" selection-end-line="699" selection-end-column="41" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="1593" column="34" selection-start-line="1593" selection-start-column="31" selection-end-line="1593" selection-end-column="34" />
               <folding />
             </state>
           </provider>
@@ -63,7 +67,7 @@
         <entry file="file://$PROJECT_DIR$/gamedata/scripts/gulag_utils.script">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="114" column="51" selection-start-line="114" selection-start-column="51" selection-end-line="114" selection-end-column="51" />
+              <caret line="122" column="65" selection-start-line="122" selection-start-column="65" selection-end-line="122" selection-end-column="65" />
               <folding />
             </state>
           </provider>
@@ -103,7 +107,7 @@
         <entry file="file://$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="161" column="14" selection-start-line="161" selection-start-column="14" selection-end-line="161" selection-end-column="14" />
+              <caret line="178" column="16" selection-start-line="178" selection-start-column="16" selection-end-line="178" selection-end-column="16" />
               <folding />
             </state>
           </provider>
@@ -129,10 +133,10 @@
       <list>
         <option value="$PROJECT_DIR$/gamedata/scripts/se_smart_cover.script" />
         <option value="$PROJECT_DIR$/gamedata/configs/scripts/marsh/smart/mar_smart_terrain_base.ltx" />
+        <option value="$PROJECT_DIR$/gamedata/scripts/gulag_utils.script" />
+        <option value="$PROJECT_DIR$/gamedata/scripts/smart_terrain.script" />
         <option value="$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx" />
         <option value="$PROJECT_DIR$/gamedata/scripts/gulag_general.script" />
-        <option value="$PROJECT_DIR$/gamedata/scripts/smart_terrain.script" />
-        <option value="$PROJECT_DIR$/gamedata/scripts/gulag_utils.script" />
       </list>
     </option>
   </component>
@@ -142,10 +146,10 @@
     <detection-done>true</detection-done>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-7" />
-    <option name="y" value="2" />
-    <option name="width" value="1932" />
-    <option name="height" value="1045" />
+    <option name="x" value="-8" />
+    <option name="y" value="-8" />
+    <option name="width" value="1936" />
+    <option name="height" value="1056" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -811,36 +815,36 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="80894000" />
+    <option name="totallyTimeSpent" value="83572000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="2" width="1932" height="1045" extended-state="0" />
-    <editor active="false" />
+    <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Palette&#9;" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.19609967" sideWeight="0.50852877" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19846492" sideWeight="0.4914712" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19609967" sideWeight="0.4914712" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.18055555" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.18017058" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="LuaJ" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32995737" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32936078" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32900432" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32936078" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -1217,14 +1221,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/gamedata/configs/scripts/marsh/smart/mar_smart_terrain_base.ltx">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="59" column="86" selection-start-line="59" selection-start-column="86" selection-end-line="59" selection-end-column="86" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://D:/Docs/Dokumenty/STALKER/tools/CoC_SDK_editors/editors/gamedata/scripts/_g.script">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.26050422">
@@ -1233,34 +1229,42 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="161" column="14" selection-start-line="161" selection-start-column="14" selection-end-line="161" selection-end-column="14" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="738" column="37" selection-start-line="738" selection-start-column="33" selection-end-line="738" selection-end-column="37" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/gamedata/scripts/gulag_utils.script">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="114" column="51" selection-start-line="114" selection-start-column="51" selection-end-line="114" selection-end-column="51" />
+          <caret line="122" column="65" selection-start-line="122" selection-start-column="65" selection-end-line="122" selection-end-column="65" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gamedata/configs/scripts/marsh/smart/mar_smart_terrain_base.ltx">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="59" column="86" selection-start-line="59" selection-start-column="86" selection-end-line="59" selection-end-column="86" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gamedata/configs/scripts/marsh/mar_smart_terrain_base_smart_logic.ltx">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="178" column="16" selection-start-line="178" selection-start-column="16" selection-end-line="178" selection-end-column="16" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/gamedata/scripts/smart_terrain.script">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-0.46372688">
-          <caret line="699" column="41" selection-start-line="699" selection-start-column="41" selection-end-line="699" selection-end-column="41" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="1593" column="34" selection-start-line="1593" selection-start-column="31" selection-end-line="1593" selection-end-column="34" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gamedata/scripts/gulag_general.script">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.30252102">
+          <caret line="1455" column="4" selection-start-line="1455" selection-start-column="4" selection-end-line="1455" selection-end-column="4" />
           <folding />
         </state>
       </provider>

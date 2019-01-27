@@ -1,6 +1,6 @@
 local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
-local JOB_TYPE_PLAIN = 201
+local JOB_TYPE_EXTERIOR = 201
 local JOB_TYPE_CAMP = 202
 local JOB_TYPE_NIGHT = 203
 local JOB_TYPE_RAINCOVER = 204
@@ -50,12 +50,12 @@ local function job_avail_to_npc(npc_info, job, smart)
 end
 
 function get_optimal_passive_job_type()
-    local optimal_passive_job_type = JOB_TYPE_PLAIN
+    local optimal_passive_job_type = JOB_TYPE_EXTERIOR
 
     local weather_string = level.get_weather()
     local day = is_night() == false
 
-    local primary_job_type = JOB_TYPE_PLAIN
+    local primary_job_type = JOB_TYPE_EXTERIOR
     local primary_job_chance = 0
 
     local alt_job_type
@@ -170,8 +170,8 @@ function decide_optimal_passive_job_type(smart, npc_info)
 
     local optimal_job_type = get_optimal_passive_job_type()
 
-    if (optimal_job_type == JOB_TYPE_PLAIN) then
-        jobs_table = smart.stalker_plain_jobs
+    if (optimal_job_type == JOB_TYPE_EXTERIOR) then
+        jobs_table = smart.stalker_exterior_jobs
     elseif (optimal_job_type == JOB_TYPE_CAMP) then
         jobs_table = smart.stalker_camp_jobs
     elseif (optimal_job_type == JOB_TYPE_RAINCOVER) then
@@ -185,11 +185,11 @@ function decide_optimal_passive_job_type(smart, npc_info)
     local found_free_optimal_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
 
     if (not found_free_optimal_jobs) then
-        if (optimal_job_type ~= JOB_TYPE_PLAIN) then
-            jobs_table = smart.stalker_plain_jobs
+        if (optimal_job_type ~= JOB_TYPE_EXTERIOR) then
+            jobs_table = smart.stalker_exterior_jobs
 
-            local found_free_plain_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
-            if (not found_free_plain_jobs) then
+            local found_free_exterior_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
+            if (not found_free_exterior_jobs) then
                 jobs_table = smart.stalker_generic_jobs
                 printf("[INFO] No free job, assigning generic job.")
             end
