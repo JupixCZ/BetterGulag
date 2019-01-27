@@ -1,0 +1,165 @@
+Index: gamedata/scripts/gulag_general.script
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- gamedata/scripts/gulag_general.script	(revision e9050bdbef2281dbe7b23aaaa2631572774aba84)
++++ gamedata/scripts/gulag_general.script	(revision )
+@@ -94,8 +94,8 @@
+ 	["heli_move"]		= "heli_path_job"
+ }
+ 
+-local JOB_TYPE_PASSIVE_PLAIN = 201
+-local JOB_TYPE_PASSIVE_NIGHT = 202
++local JOB_TYPE_PLAIN = 201
++local JOB_TYPE_NIGHT = 202
+ 
+ function get_job_prior(job)
+ 	if (job.exclusive) then 
+@@ -503,13 +503,16 @@
+ 	end
+ end
+ 
+-local function init_collector_jobs(smart,stalker_jobs,gname)
++local function init_collector_jobs(smart,gname)
+  	local name, job_ltx
+ 	local i = 1
+ 	while level.patrol_path_exists(gname.."_collector_"..i.."_walk") do
+ 		name = gname.."_collector_"..i.."_walk"
+-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 4})
+ 
++		local job = {section = "logic@"..name, job_type_id = 4}
++		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
++		table.insert(smart.stalker_plain_jobs, job)
++
+ 		if (ltx) then
+ 			job_ltx = [[
+ [logic@%s]
+@@ -646,20 +649,28 @@
+ local function init_animpoint_jobs(smart,stalker_jobs,gname)
+ 	local name, job_ltx
+ 	local i = 1
+-	local passive_job_type_id
++	local passive_job_type
+ 
+ 	while ((se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i] ~= nil) or (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i .. "_xpn"] ~= nil)) do
+ 		printf("loading job " .. gname .. "_animpoint_" .. i)
+-		passive_job_type_id = JOB_TYPE_PASSIVE_PLAIN
+ 		name = gname.."_animpoint_"..i
+ 		if (se_smart_cover.registered_smartcovers[gname .. "_animpoint_" .. i .. "_xpn"] ~= nil) then
+ 			printf("its a NIGHT job")
+-			passive_job_type_id = JOB_TYPE_PASSIVE_NIGHT
+ 			name = gname.."_animpoint_"..i .. "_xpn"
++			passive_job_type = JOB_TYPE_NIGHT
++		else
++			passive_job_type = JOB_TYPE_PLAIN
+ 		end
+ 
+-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 7, passive_job_type = passive_job_type_id})
++		local job = {section = "logic@"..name, job_type_id = 7}
++		rawset(stalker_jobs,#stalker_jobs+1,job)
+ 
++		if (passive_job_type == JOB_TYPE_NIGHT) then
++			table.insert(smart.stalker_night_jobs, job)
++		end
++
++		table.insert(smart.stalker_plain_jobs, job)
++
+ 		if (ltx) then
+ 			job_ltx = [[
+ [logic@%s]
+@@ -920,7 +931,7 @@
+ 	local i = 1
+ 	while level.patrol_path_exists(gname.."_camper_"..i.."_walk") do
+ 		name = gname.."_camper_"..i.."_walk"
+-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 12, passive_job_type = JOB_TYPE_PASSIVE_PLAIN})
++		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 12, passive_job_type = JOB_TYPE_PLAIN })
+ 
+ 		if (ltx) then
+ 			ptr = patrol(name)
+@@ -987,7 +998,7 @@
+ 	local i = 1
+ 	while beh_ini:section_exist(gname.."_beh_"..i) do
+ 		name = gname.."_beh_"..i
+-		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 13, passive_job_type = JOB_TYPE_PASSIVE_PLAIN})
++		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 13, passive_job_type = JOB_TYPE_PLAIN })
+ 
+ 		if (ltx) then
+ 			job_ltx = [[
+@@ -1285,21 +1296,21 @@
+ 	else
+ 		if (string.find(lsec, "camp_work") or string.find(lsec, "kamp")) then
+ 			job_type_id = 11
+-			job_table = smart.stalker_passive_jobs
++			job_table = smart.stalker_plain_jobs
+ 		else
+ 			job_table = smart.stalker_exclusive_jobs
+ 		end
+ 	end
+ 
+ 	if not (job_suitable) then
+-		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true, job_type_id = job_type_id, passive_job_type = JOB_TYPE_PASSIVE_PLAIN}
++		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true, job_type_id = job_type_id, passive_job_type = JOB_TYPE_PLAIN }
+ 		rawset(job_table,#job_table+1,new_job)
+ 		return
+ 	end
+ 
+ 	local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
+ 
+-	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id, passive_job_type = JOB_TYPE_PASSIVE_PLAIN}
++	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id, passive_job_type = JOB_TYPE_PLAIN }
+ 	rawset(job_table,#job_table+1,new_job)
+ end
+ ---------------------------------------------------------------------------------------
+@@ -1358,7 +1369,6 @@
+ 	-- these tables store job information of the smart terrain
+ 	local stalker_exclusive_jobs = {}
+ 	local stalker_guard_jobs = {}
+-	local stalker_passive_jobs = {}
+ 	local stalker_generic_jobs = {}
+ 
+ 	local stalker_sleep_jobs = {}
+@@ -1367,30 +1377,34 @@
+ 	local monster_jobs = {}
+ 	local heli_jobs = {}
+ 
++	smart.stalker_jobs = {}
++	smart.stalker_plain_jobs = {}
++	smart.stalker_night_jobs = {}
++
+ 	-- create heli jobs 
+ 	init_heli_move_jobs(smart,heli_jobs,gname)
+ 	init_heli_move_point_jobs(smart,heli_jobs,gname)
+ 	init_heli_hide_jobs(smart,heli_jobs,gname)
+-	
++
++	-- create monster jobs
++	init_monster_jobs(smart,monster_jobs,gname)
++	
+ 	-- create stalker jobs
+ 	init_generic_jobs(smart,stalker_generic_jobs,gname)
+ 	init_surge_jobs(smart,stalker_surge_jobs,gname)
+ 	init_sleep_jobs(smart,stalker_sleep_jobs,gname)
+-	init_collector_jobs(smart,stalker_passive_jobs,gname)
++	init_collector_jobs(smart,gname)
+ 	init_walker_jobs(smart,stalker_guard_jobs,gname)
+ 	init_patrol_jobs(smart,stalker_guard_jobs,gname)
+-	init_animpoint_jobs(smart,stalker_passive_jobs,gname)
++	init_animpoint_jobs(smart, gname)
+ 	init_guard_jobs(smart,stalker_guard_jobs,gname)
+ 	init_sniper_jobs(smart,stalker_guard_jobs,gname)
+-	init_camper_jobs(smart,stalker_passive_jobs,gname)
+-	init_beh_jobs(smart,stalker_passive_jobs,gname)
++	init_camper_jobs(smart,stalker_plain_jobs,gname)
++	init_beh_jobs(smart,stalker_plain_jobs,gname)
+ 
+-	-- create monster jobs
+-	init_monster_jobs(smart,monster_jobs,gname)
+-
+ 	-- reference newly created job tables
+ 	smart.stalker_guard_jobs = stalker_guard_jobs
+-	smart.stalker_passive_jobs = stalker_passive_jobs
++	smart.stalker_plain_jobs = stalker_plain_jobs
+ 	smart.stalker_sleep_jobs = stalker_sleep_jobs
+ 	smart.stalker_surge_jobs = stalker_surge_jobs
+ 	smart.stalker_generic_jobs = stalker_generic_jobs
