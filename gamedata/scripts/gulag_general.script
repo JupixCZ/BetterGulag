@@ -94,9 +94,14 @@ local job_type_by_scheme = {
 	["heli_move"]		= "heli_path_job"
 }
 
-local JOB_TYPE_EXTERIOR = "exterior_job"
-local JOB_TYPE_CAMP = "camp_job"
-local JOB_TYPE_NIGHT = "night_job"
+local JOB_TYPE_EXTERIOR = "job_type_exterior"
+local JOB_TYPE_COVER = "job_type_cover"
+local JOB_TYPE_SURGE = "job_type_surge"
+local JOB_TYPE_CAMP = "job_type_camp"
+
+local JOB_TYPE_ID_EXTERIOR = 2
+local JOB_TYPE_ID_COVER = 3
+local JOB_TYPE_ID_SURGE = 5
 
 function get_job_prior(job)
 	if (job.exclusive) then 
@@ -356,6 +361,9 @@ job_info_by_job_type_id = {
 ---------------------------------------------------------------------------------------
 -- Smart Job helper functions
 ---------------------------------------------------------------------------------------
+
+-- not needed now, read from file
+--[[
 local function get_job_ini(smart, job_name)
 	local smart_ini = smart.ini
 	if (smart_ini:section_exist("smart_terrain")) then
@@ -368,23 +376,16 @@ local function get_job_ini(smart, job_name)
 		end
 	end
 end
+--]]
 
-local function get_specific_job_types(smart, job_name)
+local function get_specific_job_types(smart, job_type_id, camp)
 	local specific_job_types = {}
 
-	local job_ini = get_job_ini(smart, job_name)
-	if (job_ini == nil) then
-		return specific_job_types
-	end
+	if camp then table.insert(specific_job_types, JOB_TYPE_CAMP) end
 
-	local exterior_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_EXTERIOR, false)
-	if exterior_job then table.insert(specific_job_types, JOB_TYPE_EXTERIOR) end
-
-	local camp_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_CAMP, false)
-	if camp_job then table.insert(specific_job_types, JOB_TYPE_CAMP) end
-
-	local night_job = job_ini:r_bool_ex("logic@"..job_name, JOB_TYPE_NIGHT, false)
-	if night_job then table.insert(specific_job_types, JOB_TYPE_NIGHT) end
+	if job_type_id % JOB_TYPE_ID_EXTERIOR == 0 then table.insert(specific_job_types, JOB_TYPE_EXTERIOR) end
+	if job_type_id % JOB_TYPE_ID_COVER == 0 then table.insert(specific_job_types, JOB_TYPE_COVER) end
+	if job_type_id % JOB_TYPE_ID_SURGE == 0 then table.insert(specific_job_types, JOB_TYPE_SURGE) end
 
 	return specific_job_types
 end
@@ -392,16 +393,18 @@ end
 local function classify_job_by_specific_job_types(smart, job)
 	local specific_job_types = job.specific_job_types
 
+	printf(job.section)
 	for index, specific_job_type in ipairs(specific_job_types) do
 		if specific_job_type == JOB_TYPE_EXTERIOR then
 			table.insert(smart.stalker_exterior_jobs, job)
-			printf(JOB_TYPE_EXTERIOR)
+			printf("EXTERIOR")
 		elseif specific_job_type == JOB_TYPE_CAMP then
 			table.insert(smart.stalker_camp_jobs, job)
-			printf(JOB_TYPE_CAMP)
-		elseif specific_job_type == JOB_TYPE_NIGHT then
-			table.insert(smart.stalker_night_jobs, job)
-			printf(JOB_TYPE_NIGHT)
+			printf("CAMP")
+		elseif specific_job_type == JOB_TYPE_COVER then
+			table.insert(smart.stalker_cover_jobs, job)
+			printf("COVER")
+			-- TODO surge missing
 		end
 	end
 end
@@ -431,6 +434,23 @@ local function get_generic_animpoint_job_ltx(smart, name)
 	end
 
 	return job_ltx
+end
+
+local function get_animpoint_job_type_id(job_string)
+	local sub_job_string = job_string.."_x"
+
+	-- FIXME refactor - really dumb way
+	-- caution, this only cares about spawn points!
+	if (se_smart_cover.registered_smartcovers[sub_job_string .. 2] ~= nil) then return 2
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 3] ~= nil) then return 3
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 5] ~= nil) then return 5
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 6] ~= nil) then return 6
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 10] ~= nil) then return 10
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 15] ~= nil) then return 15
+	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 30] ~= nil) then return 30
+	else return nil
+	end
+
 end
 
 ------------------------------------------------------------------------------------
@@ -728,38 +748,51 @@ path_walk = patrol_%s_walk
 	end
 end
 
-local function init_animpoint_jobs(smart, gname, job_suffix, job_type_id)
+local function init_animpoint_jobs(smart, gname, camp, job_type_id_param)
 	local job_ltx, job_name, specific_job_types_var
 	local i = 1
+	local job_name
+	local job_type_id
 
-	while (se_smart_cover.registered_smartcovers[gname .. job_suffix .. i] ~= nil) do
-		job_name = gname .. job_suffix ..i
+	local searched_job_name = gname .. "_animpoint_"
+	if (camp) then searched_job_name = searched_job_name .. "camp_" end
 
-		printf("initing "..job_name)
-		specific_job_types_var = get_specific_job_types(smart, job_name)
+	local found_job = true
+	while found_job do
+		job_type_id = get_animpoint_job_type_id(searched_job_name .. i)
 
-		local job = {section = "logic@"..job_name, job_type_id = job_type_id, specific_job_types = specific_job_types_var}
-		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
+		if (job_type_id == nil) then
+			found_job = false
+		else
+			job_name = searched_job_name .. i .. "_x" .. job_type_id
+			printf("initing ".. job_name)
 
-		classify_job_by_specific_job_types(smart, job)
+			specific_job_types_var = get_specific_job_types(smart, job_type_id, camp)
 
-		-- for counting guard X passive only
-		table.insert(smart.stalker_passive_jobs, job)
+			local job = {section = "logic@"..job_name, job_type_id = job_type_id_param, specific_job_types = specific_job_types_var}
+			rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
 
-		if (ltx) then
-			job_ltx = get_generic_animpoint_job_ltx(smart, job_name)
-			ltx = ltx.."\n\n"..job_ltx
+			classify_job_by_specific_job_types(smart, job)
+
+			-- for counting guard X passive only
+			table.insert(smart.stalker_passive_jobs, job)
+
+			if (ltx) then
+				job_ltx = get_generic_animpoint_job_ltx(smart, job_name)
+				ltx = ltx.."\n\n"..job_ltx
+			end
+
+			i = i + 1
 		end
-		i = i + 1
 	end
 end
 
 local function init_animpoint_camper_jobs(smart, gname)
-	init_animpoint_jobs(smart, gname, "_animpoint_camp_", 11)
+	init_animpoint_jobs(smart, gname, true, 11)
 end
 
-local function init_animpoint_rest_jobs(smart, gname)
-	init_animpoint_jobs(smart, gname, "_animpoint_rest_", 7)
+local function init_animpoint_normal_jobs(smart, gname)
+	init_animpoint_jobs(smart, gname, false, 7)
 end
 
 local function init_animpoint_surge_jobs(smart, stalker_jobs, gname)
@@ -1433,7 +1466,7 @@ use_text                       = nil
 	smart.stalker_passive_jobs = {}
 	smart.stalker_exterior_jobs = {}
 	smart.stalker_camp_jobs = {}
-	smart.stalker_night_jobs = {}
+	smart.stalker_cover_jobs = {}
 
 	-- TODO pořádek v jobs
 	-- create heli jobs 
@@ -1452,12 +1485,17 @@ use_text                       = nil
 	init_walker_jobs(smart,stalker_guard_jobs,gname)
 	init_patrol_jobs(smart,stalker_guard_jobs,gname)
 	init_animpoint_camper_jobs(smart, gname)
-	init_animpoint_rest_jobs(smart, gname)
+	init_animpoint_normal_jobs(smart, gname)
 	init_animpoint_surge_jobs(smart, stalker_surge_jobs, gname)
 	init_guard_jobs(smart,stalker_guard_jobs,gname)
 	init_sniper_jobs(smart,stalker_guard_jobs,gname)
 	init_camper_jobs(smart,gname)
 	init_beh_jobs(smart,gname)
+
+	printf("ext jobs:")
+	for index, job in ipairs(smart.stalker_exterior_jobs) do
+		printf(job.section)
+	end
 
 	-- reference newly created job tables
 	smart.stalker_guard_jobs = stalker_guard_jobs

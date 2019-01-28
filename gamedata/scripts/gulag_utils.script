@@ -2,8 +2,7 @@ local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
 local JOB_TYPE_EXTERIOR = 201
 local JOB_TYPE_CAMP = 202
-local JOB_TYPE_NIGHT = 203
-local JOB_TYPE_RAINCOVER = 204
+local JOB_TYPE_COVER = 203
 
 local WEATHER_CLEAR = "clear"
 local WEATHER_PARTLY = "partly"
@@ -28,12 +27,6 @@ local function is_night()
     return in_time_interval(21, 7)
 end
 
-local function is_weather_bad(weather_string)
-    return string.match(weather_string, WEATHER_RAIN)
-            or string.match(weather_string, WEATHER_STORM)
-            or string.match(weather_string, WEATHER_THUNDER)
-end
-
 local function job_avail_to_npc(npc_info, job, smart)
     --[[
     if (smart.dead_time[job.section]) then
@@ -55,54 +48,111 @@ function get_optimal_passive_job_type()
     local weather_string = level.get_weather()
     local day = is_night() == false
 
-    local primary_job_type = JOB_TYPE_EXTERIOR
-    local primary_job_chance = 0
-
-    local alt_job_type
-
-    if (day) then
-        if is_weather_bad(weather_string) then alt_job_type = JOB_TYPE_RAINCOVER else alt_job_type = JOB_TYPE_CAMP end
-    else
-    -- might be raincover_night?
-        if is_weather_bad(weather_string) then alt_job_type = JOB_TYPE_RAINCOVER else alt_job_type = JOB_TYPE_NIGHT end
-    end
+    local exterior_chance = 0
+    local camp_chance = 0
+    local cover_chance = 0
 
     if (string.match(weather_string, WEATHER_CLEAR)) then
-        if (day) then primary_job_chance = 100 else primary_job_chance = 35 end
+        if (day) then
+            exterior_chance = 100
+        else
+            camp_chance = 70
+            cover_chance = 30
+        end
     elseif (string.match(weather_string, WEATHER_PARTLY)) then
-        if (day) then primary_job_chance = 100 else primary_job_chance = 30 end
+        if (day) then
+            exterior_chance = 100
+        else
+            camp_chance = 65
+            cover_chance = 35
+        end
     elseif (string.match(weather_string, WEATHER_CLOUDY)) then
-        if (day) then primary_job_chance = 80 else primary_job_chance = 25 end
+        if (day) then
+            exterior_chance = 80
+            camp_chance = 20
+        else
+            camp_chance = 60
+            cover_chance = 40
+        end
     elseif (string.match(weather_string, WEATHER_CLOUDY_NO_SUN)) then
-        if (day) then primary_job_chance = 75 else primary_job_chance = 25 end
+        if (day) then
+            exterior_chance = 75
+            camp_chance = 25
+        else
+            camp_chance = 50
+            cover_chance = 50
+        end
     elseif (string.match(weather_string, WEATHER_FOGGY)) then
-        if (day) then primary_job_chance = 70 else primary_job_chance = 20 end
+        if (day) then
+            exterior_chance = 60
+            camp_chance = 40
+        else
+            camp_chance = 40
+            cover_chance = 60
+        end
     elseif (string.match(weather_string, WEATHER_FOGGY_NO_SUN)) then
-        if (day) then primary_job_chance = 65 else primary_job_chance = 20 end
+        if (day) then
+            exterior_chance = 55
+            camp_chance = 45
+        else
+            camp_chance = 40
+            cover_chance = 60
+        end
     elseif (string.match(weather_string, WEATHER_THUNDER)) then
-        if (day) then primary_job_chance = 60 else primary_job_chance = 15 end
+        if (day) then
+            exterior_chance = 50
+            camp_chance = 20
+            cover_chance = 30
+        else
+            camp_chance = 30
+            cover_chance = 70
+        end
     elseif (string.match(weather_string, WEATHER_VERYFOGGY)) then
-        if (day) then primary_job_chance = 40 else primary_job_chance = 10 end
-    elseif (string.match(weather_string, WEATHER_RAIN)) then
-        if (day) then primary_job_chance = 30 else primary_job_chance = 10 end
+        if (day) then
+            exterior_chance = 40
+            camp_chance = 30
+            cover_chance = 30
+        else
+            camp_chance = 30
+            cover_chance = 70
+        end
     elseif (string.match(weather_string, WEATHER_VERYFOGGY_NO_SUN)) then
-        if (day) then primary_job_chance = 25 else primary_job_chance = 10 end
+        if (day) then
+            exterior_chance = 30
+            camp_chance = 40
+            cover_chance = 30
+        else
+            camp_chance = 25
+            cover_chance = 75
+        end
+    elseif (string.match(weather_string, WEATHER_RAIN)) then
+        if (day) then
+            exterior_chance = 25
+            cover_chance = 75
+        else
+            exterior_chance = 20
+            cover_chance = 80
+        end
     elseif (string.match(weather_string, WEATHER_STORM)) then
-        primary_job_chance = 5
+        cover_chance = 100
     end
 
-    printf("Weather: " .. weather_string .. " , rolling for job " .. primary_job_type .. " with a chance of " .. primary_job_chance .. "%")
+    local chance = math.random(1, 100)
 
-    -- rolling for job type
-    if (roll(primary_job_chance)) then
-        optimal_passive_job_type = primary_job_type
-        printf("TAKING THE JOB!")
+    local exterior_chance_num = exterior_chance
+    local camp_chance_num = exterior_chance_num + camp_chance
+
+    if (exterior_chance ~= 0 and chance < exterior_chance_num) then
+        printf("[INFO] Picked EXTERIOR job")
+        return JOB_TYPE_EXTERIOR
+    elseif (camp_chance ~= 0 and chance < camp_chance_num) then
+        printf("[INFO] Picked CAMP job")
+        return JOB_TYPE_CAMP
     else
-        optimal_passive_job_type = alt_job_type
-        printf("TAKING ALTERNATIVE JOB!")
+        printf("[INFO] Picked COVER job")
+        return JOB_TYPE_COVER
     end
 
-    return optimal_passive_job_type
 end
 
 function get_weather_simple_string(weather_string)
@@ -168,34 +218,49 @@ end
 function decide_optimal_passive_job_type(smart, npc_info)
     local jobs_table
 
-    local optimal_job_type = get_optimal_passive_job_type()
+    local job_type = get_optimal_passive_job_type()
 
-    if (optimal_job_type == JOB_TYPE_EXTERIOR) then
+    if (job_type == JOB_TYPE_EXTERIOR) then
         jobs_table = smart.stalker_exterior_jobs
-    elseif (optimal_job_type == JOB_TYPE_CAMP) then
+    elseif (job_type == JOB_TYPE_CAMP) then
         jobs_table = smart.stalker_camp_jobs
-    elseif (optimal_job_type == JOB_TYPE_RAINCOVER) then
-        -- RAINCOVER not implemented yet
-        jobs_table = smart.stalker_night_jobs
-        printf("[INFO] Should take raincover job, not implemented yet.")
     else
-        jobs_table = smart.stalker_night_jobs
+        jobs_table = smart.stalker_cover_jobs
     end
 
-    local found_free_optimal_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
+    local tried_exterior_job = false
+    local tried_camp_job = false
+    local tried_cover_job = false
+    local keep_trying = true
 
-    if (not found_free_optimal_jobs) then
-        if (optimal_job_type ~= JOB_TYPE_EXTERIOR) then
-            jobs_table = smart.stalker_exterior_jobs
+    while keep_trying do
+        local found_free_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
 
-            local found_free_exterior_jobs = table.getn(jobs_table) ~= 0 and has_free_jobs(smart, jobs_table, npc_info)
-            if (not found_free_exterior_jobs) then
-                jobs_table = smart.stalker_generic_jobs
-                printf("[INFO] No free job, assigning generic job.")
-            end
+        if (found_free_jobs) then
+            keep_trying = false
         else
-            jobs_table = smart.stalker_generic_jobs
-            printf("[INFO] No free job, assigning generic job.")
+            if (job_type == JOB_TYPE_EXTERIOR) then tried_exterior_job = true
+            elseif (job_type == JOB_TYPE_CAMP) then tried_camp_job = true
+            elseif (job_type == JOB_TYPE_COVER) then tried_cover_job = true
+            end
+
+            if (tried_exterior_job and tried_camp_job and tried_cover_job) then
+                printf("[INFO] No free job, assigning generic job.")
+
+                jobs_table = smart.stalker_generic_jobs
+                keep_trying = false
+            else
+                if (tried_exterior_job == false) then
+                    jobs_table = smart.stalker_exterior_jobs
+                    job_type = JOB_TYPE_EXTERIOR
+                elseif (tried_camp_job == false) then
+                    jobs_table = smart.stalker_camp_jobs
+                    job_type = JOB_TYPE_CAMP
+                else
+                    jobs_table = smart.stalker_cover_jobs
+                    job_type = JOB_TYPE_COVER
+                end
+            end
         end
     end
 
