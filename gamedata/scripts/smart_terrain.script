@@ -25,9 +25,6 @@ local JOB_BEH = 12
 local JOB_TYPE_EXCLUSIVE = 400
 local JOB_TYPE_GUARD = 300
 local JOB_TYPE_PASSIVE = 200
-local JOB_TYPE_EXTERIOR = 201
-local JOB_TYPE_CAMP = 202
-local JOB_TYPE_COVER = 203
 local JOB_TYPE_GENERIC = 100
 
 nearest_to_actor_smart = {id = nil , dist = math.huge}
@@ -480,7 +477,7 @@ function se_smart_terrain:load_jobs()
 	local job,active_section,section,ltx, path_field, path_name, smartcover, smartcover_name, prefix_name, job_type
 	local gg, CALifeSmartTerrainTask,level = game_graph(),CALifeSmartTerrainTask,level
 	
-	local table_of_jobs = {self.stalker_exclusive_jobs, self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_exterior_jobs,self.stalker_camp_jobs, self.stalker_cover_jobs,self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
+	local table_of_jobs = {self.stalker_exclusive_jobs, self.stalker_generic_jobs,self.stalker_guard_jobs,self.stalker_passive_jobs, self.stalker_free_jobs ,self.stalker_camp_jobs, self.stalker_sleep_jobs,self.stalker_surge_jobs,self.monster_jobs,self.heli_jobs}
 	local tbl
 	for n=1,#table_of_jobs do
 		tbl = table_of_jobs[n]
@@ -747,7 +744,7 @@ function se_smart_terrain:select_stalker_npc_job(npc_info,now,surge_started)
 		end
 
 		-- for debugging purpose only, for production use (100, 1200)
-		local job_persist = math.random(30, 200)
+		local job_persist = math.random(100, 1200)
 		npc_info.job_persist = job_persist
 
 		return job
@@ -1442,10 +1439,10 @@ function se_smart_terrain:find_job_by_section(section)
 		end
 	end 
 
-	if (self.stalker_exterior_jobs) then
-		for i=1,#self.stalker_exterior_jobs do
-			if (self.stalker_exterior_jobs[i].section == section) then
-				return self.stalker_exterior_jobs[i]
+	if (self.stalker_free_jobs) then
+		for i=1,#self.stalker_free_jobs do
+			if (self.stalker_free_jobs[i].section == section) then
+				return self.stalker_free_jobs[i]
 			end
 		end
 	end
@@ -1454,14 +1451,6 @@ function se_smart_terrain:find_job_by_section(section)
 		for i=1,#self.stalker_camp_jobs do
 			if (self.stalker_camp_jobs[i].section == section) then
 				return self.stalker_camp_jobs[i]
-			end
-		end
-	end
-
-	if (self.stalker_cover_jobs) then
-		for i=1,#self.stalker_cover_jobs do
-			if (self.stalker_cover_jobs[i].section == section) then
-				return self.stalker_cover_jobs[i]
 			end
 		end
 	end

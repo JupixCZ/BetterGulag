@@ -94,15 +94,6 @@ local job_type_by_scheme = {
 	["heli_move"]		= "heli_path_job"
 }
 
-local JOB_TYPE_EXTERIOR = "job_type_exterior"
-local JOB_TYPE_COVER = "job_type_cover"
-local JOB_TYPE_SURGE = "job_type_surge"
-local JOB_TYPE_CAMP = "job_type_camp"
-
-local JOB_TYPE_ID_EXTERIOR = 2
-local JOB_TYPE_ID_COVER = 3
-local JOB_TYPE_ID_SURGE = 5
-
 function get_job_prior(job)
 	if (job.exclusive) then 
 		return job.prior
@@ -378,81 +369,6 @@ local function get_job_ini(smart, job_name)
 end
 --]]
 
-local function get_specific_job_types(smart, job_type_id, camp)
-	local specific_job_types = {}
-
-	if camp then table.insert(specific_job_types, JOB_TYPE_CAMP) end
-
-	if job_type_id % JOB_TYPE_ID_EXTERIOR == 0 then table.insert(specific_job_types, JOB_TYPE_EXTERIOR) end
-	if job_type_id % JOB_TYPE_ID_COVER == 0 then table.insert(specific_job_types, JOB_TYPE_COVER) end
-	if job_type_id % JOB_TYPE_ID_SURGE == 0 then table.insert(specific_job_types, JOB_TYPE_SURGE) end
-
-	return specific_job_types
-end
-
-local function classify_job_by_specific_job_types(smart, job)
-	local specific_job_types = job.specific_job_types
-
-	printf(job.section)
-	for index, specific_job_type in ipairs(specific_job_types) do
-		if specific_job_type == JOB_TYPE_EXTERIOR then
-			table.insert(smart.stalker_exterior_jobs, job)
-			printf("EXTERIOR")
-		elseif specific_job_type == JOB_TYPE_CAMP then
-			table.insert(smart.stalker_camp_jobs, job)
-			printf("CAMP")
-		elseif specific_job_type == JOB_TYPE_COVER then
-			table.insert(smart.stalker_cover_jobs, job)
-			printf("COVER")
-			-- TODO surge missing
-		end
-	end
-end
-
-local function get_generic_animpoint_job_ltx(smart, name)
-	local job_ltx = [[
-		[logic@%s]
-		active = animpoint@%s
-
-		[animpoint@%s]
-		meet = meet@generic_animpoint
-		cover_name = %s
-		]]
-
-	job_ltx = strformat(job_ltx,name,name,name,name)
-
-	if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
-		job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
-	end
-
-	if (smart.def_restr) then
-		job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
-	end
-
-	if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
-		job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
-	end
-
-	return job_ltx
-end
-
-local function get_animpoint_job_type_id(job_string)
-	local sub_job_string = job_string.."_x"
-
-	-- FIXME refactor - really dumb way
-	-- caution, this only cares about spawn points!
-	if (se_smart_cover.registered_smartcovers[sub_job_string .. 2] ~= nil) then return 2
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 3] ~= nil) then return 3
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 5] ~= nil) then return 5
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 6] ~= nil) then return 6
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 10] ~= nil) then return 10
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 15] ~= nil) then return 15
-	elseif (se_smart_cover.registered_smartcovers[sub_job_string .. 30] ~= nil) then return 30
-	else return nil
-	end
-
-end
-
 ------------------------------------------------------------------------------------
 -- Smart Job Automation functions
 ------------------------------------------------------------------------------------
@@ -613,7 +529,7 @@ local function init_collector_jobs(smart,gname)
 		local job = {section = "logic@"..name, job_type_id = 4}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
 		table.insert(smart.stalker_passive_jobs, job)
-		table.insert(smart.stalker_exterior_jobs, job)
+		table.insert(smart.stalker_free_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -748,63 +664,136 @@ path_walk = patrol_%s_walk
 	end
 end
 
-local function init_animpoint_jobs(smart, gname, camp, job_type_id_param)
-	local job_ltx, job_name, specific_job_types_var
+local function init_camper_jobs(smart,gname)
+	local name, job_ltx, ptr, wp_prop, radius, state
 	local i = 1
-	local job_name
-	local job_type_id
+	while level.patrol_path_exists(gname.."_camper_"..i.."_walk") do
+		name = gname.."_camper_"..i.."_walk"
 
-	local searched_job_name = gname .. "_animpoint_"
-	if (camp) then searched_job_name = searched_job_name .. "camp_" end
+		rawset(smart.stalker_passive_jobs,#smart.stalker_passive_jobs+1,{section = "logic@"..name, job_type_id = 11}) -- 12?
+		rawset(smart.stalker_free_jobs,#smart.stalker_free_jobs+1,{section = "logic@"..name, job_type_id = 11})
 
-	local found_job = true
-	while found_job do
-		job_type_id = get_animpoint_job_type_id(searched_job_name .. i)
-
-		if (job_type_id == nil) then
-			found_job = false
-		else
-			job_name = searched_job_name .. i .. "_x" .. job_type_id
-			printf("initing ".. job_name)
-
-			specific_job_types_var = get_specific_job_types(smart, job_type_id, camp)
-
-			local job = {section = "logic@"..job_name, job_type_id = job_type_id_param, specific_job_types = specific_job_types_var}
-			rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-
-			classify_job_by_specific_job_types(smart, job)
-
-			-- for counting guard X passive only
-			table.insert(smart.stalker_passive_jobs, job)
-
-			if (ltx) then
-				job_ltx = get_generic_animpoint_job_ltx(smart, job_name)
-				ltx = ltx.."\n\n"..job_ltx
+		if (ltx) then
+			ptr = patrol(name)
+			wp_prop = utils.parse_waypoint_data(name, ptr:flags(0), ptr:name(0))
+			state = "guard"
+			radius = 10
+			if wp_prop.state ~= nil then
+				if wp_prop.state == "stand" then
+					state = "threat"
+				end
+			end
+			if wp_prop.radius ~= nil then
+				radius = wp_prop.radius
 			end
 
-			i = i + 1
+			job_ltx = [[
+[logic@%s]
+active = camper@%s
+
+[camper@%s]
+meet = meet@generic_lager
+radius = %s
+path_walk = camper_%s_walk
+def_state_moving = rush
+def_state_campering = %s
+def_state_campering_fire = %s
+]]
+			job_ltx = strformat(job_ltx,name,name,name,radius,i,state,"hide_fire")
+
+			if (level.patrol_path_exists(gname.."_camper_"..i.."_look")) then
+				job_ltx = job_ltx.."path_look = camper_"..i.."_look\n"
+			end
+
+			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
+				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
+			end
+
+			--[[
+			if (xr_gulag.job_in_restrictor(smart,gname.."_camper_"..i.."_restr",name)) then
+				job_ltx = job_ltx.."out_restr = " .. gname.."_camper_"..i.."_restr"
+			end
+			--]]
+
+			if (smart.def_restr) then
+				--job_ltx = job_ltx .."out_restr = "..smart.def_restr..","..combat_restrictor.get_job_restrictor(name).."\n"
+			end
+
+			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
+				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+			end
+
+			ltx = ltx.."\n\n"..job_ltx
 		end
+		i = i + 1
 	end
 end
 
-local function init_animpoint_camper_jobs(smart, gname)
-	init_animpoint_jobs(smart, gname, true, 11)
-end
-
-local function init_animpoint_normal_jobs(smart, gname)
-	init_animpoint_jobs(smart, gname, false, 7)
-end
-
-local function init_animpoint_surge_jobs(smart, stalker_jobs, gname)
+local function init_animpoint_jobs(smart,gname)
 	local name, job_ltx
 	local i = 1
+	while se_smart_cover.registered_smartcovers[gname.."_animpoint_"..i] ~= nil do
+		name = gname.."_animpoint_"..i
+		rawset(smart.stalker_free_jobs,#smart.stalker_free_jobs+1,{section = "logic@"..name, job_type_id = 7})
+		rawset(smart.stalker_passive_jobs,#smart.stalker_passive_jobs+1,{section = "logic@"..name, job_type_id = 7})
 
+		if (ltx) then
+			job_ltx = [[
+[logic@%s]
+active = animpoint@%s
+
+[animpoint@%s]
+meet = meet@generic_animpoint
+cover_name = %s
+]]
+			job_ltx = strformat(job_ltx,name,name,name,name)
+
+			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
+				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
+			end
+
+			if (smart.def_restr) then
+				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
+			end
+
+			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
+				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+			end
+
+			ltx = ltx.."\n\n"..job_ltx
+		end
+		i = i + 1
+	end
+
+	-- surge
+	i = 1
 	while se_smart_cover.registered_smartcovers[gname.."_surge_animpoint_"..i] ~= nil do
 		name = gname.."_surge_animpoint_"..i
 		rawset(stalker_jobs,#stalker_jobs+1,{section = "logic@"..name, job_type_id = 8})
 
 		if (ltx) then
-			job_ltx = get_generic_animpoint_job_ltx(smart, name)
+			job_ltx = [[
+[logic@%s]
+active = animpoint@%s
+
+[animpoint@%s]
+meet = meet@generic_animpoint
+cover_name = %s
+]]
+			job_ltx = strformat(job_ltx,name,name,name,name)
+
+			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
+				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
+			end
+
+			if (smart.def_restr) then
+				job_ltx = job_ltx .."out_restr = "..smart.def_restr.."\n"
+			end
+
+			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
+				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
+			end
+
 			ltx = ltx.."\n\n"..job_ltx
 		end
 		i = i + 1
@@ -1003,73 +992,6 @@ local function init_sniper_jobs(smart,stalker_jobs,gname)
 	end
 end
 
-local function init_camper_jobs(smart,gname)
-	local name, job_ltx, ptr, wp_prop, radius, state
-	local i = 1
-	while level.patrol_path_exists(gname.."_camper_"..i.."_walk") do
-		name = gname.."_camper_"..i.."_walk"
-
-		local job = {section = "logic@"..name, job_type_id = 12}
-		rawset(smart.stalker_jobs,#smart.stalker_jobs+1, job)
-		table.insert(smart.stalker_exterior_jobs, job)
-		table.insert(smart.stalker_passive_jobs, job)
-
-		if (ltx) then
-			ptr = patrol(name)
-			wp_prop = utils.parse_waypoint_data(name, ptr:flags(0), ptr:name(0))
-			state = "guard"
-			radius = 10
-			if wp_prop.state ~= nil then
-				if wp_prop.state == "stand" then
-					state = "threat"
-				end
-			end
-			if wp_prop.radius ~= nil then
-				 radius = wp_prop.radius
-			end
-
-			job_ltx = [[
-[logic@%s]
-active = camper@%s
-
-[camper@%s]
-meet = meet@generic_lager
-radius = %s
-path_walk = camper_%s_walk
-def_state_moving = rush
-def_state_campering = %s
-def_state_campering_fire = %s
-]]
-			job_ltx = strformat(job_ltx,name,name,name,radius,i,state,"hide_fire")
-
-			if (level.patrol_path_exists(gname.."_camper_"..i.."_look")) then
-				job_ltx = job_ltx.."path_look = camper_"..i.."_look\n"
-			end
-
-			if (smart.safe_restr and xr_gulag.job_in_restrictor(smart, smart.safe_restr, name)) then
-				job_ltx = job_ltx .. "invulnerable = {=npc_in_zone("..smart.safe_restr..")} true\n"
-			end
-
-			--[[
-			if (xr_gulag.job_in_restrictor(smart,gname.."_camper_"..i.."_restr",name)) then 
-				job_ltx = job_ltx.."out_restr = " .. gname.."_camper_"..i.."_restr"
-			end
-			--]]
-			
-			if (smart.def_restr) then
-				--job_ltx = job_ltx .."out_restr = "..smart.def_restr..","..combat_restrictor.get_job_restrictor(name).."\n"
-			end
-
-			if (smart.base_on_actor_control and smart.base_on_actor_control.ignore_zone and xr_gulag.job_in_restrictor(smart, smart.base_on_actor_control.ignore_zone, name)) then
-				job_ltx = job_ltx .."combat_ignore_cond = {=npc_in_zone("..smart.base_on_actor_control.ignore_zone..")} true\ncombat_ignore_keep_when_attacked = true\n"
-			end
-
-			ltx = ltx.."\n\n"..job_ltx
-		end
-		i = i + 1
-	end
-end
-
 local function init_beh_jobs(smart,gname)
 	if not (beh_ini) then
 		return
@@ -1082,7 +1004,7 @@ local function init_beh_jobs(smart,gname)
 
 		local job = {section = "logic@"..name, job_type_id = 13}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_exterior_jobs, job)
+		table.insert(smart.stalker_free_jobs, job)
 		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
@@ -1113,7 +1035,8 @@ meet = meet@generic_lager
 
 		local job = {section = "logic@"..name, job_type_id = 14}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_exterior_jobs, job)
+		table.insert(smart.stalker_free_jobs, job)
+		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -1142,7 +1065,8 @@ meet = meet@generic_lager
 
 		local job = {section = "logic@"..name, job_type_id = 15}
 		rawset(smart.stalker_jobs,#smart.stalker_jobs+1,job)
-		table.insert(smart.stalker_exterior_jobs, job)
+		table.insert(smart.stalker_free_jobs, job)
+		table.insert(smart.stalker_passive_jobs, job)
 
 		if (ltx) then
 			job_ltx = [[
@@ -1378,23 +1302,32 @@ local function add_exclusive_job(smart,sect, work_field, smart_ini)
 		end
 	end
 
+	local is_camp = false
+
 	local job_table
 	if (is_monster) then job_table = smart.monster_jobs
 	elseif (is_heli) then job_table = smart.heli_jobs
-	else job_table = smart.stalker_exclusive_jobs
+	elseif (string.find(lsec, "camp_work") or string.find(lsec, "kamp")) then
+		is_camp = true
 	end
+
+	local new_job
 
 	if not (job_suitable) then
-		local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true}
-		rawset(job_table, #job_table + 1, new_job)
+		new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, prefix_name = prefix, exclusive = true }
+	else
+		local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
 
-		return
+		new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id }
 	end
 
-	local condlist = xr_logic.parse_condlist(smart, lsec, "suitable", job_suitable)
-
-	local new_job = {section = lsec, ini_path = ini_path, ltx = job_ini_file, job_type = job_type, prior = new_prior, precondition_params = { condlist = condlist },	precondition_function = precond_exclusive, prefix_name = prefix, exclusive = true,  job_type_id = job_type_id }
-	rawset(job_table, #job_table + 1, new_job)
+	if (is_camp) then
+		rawset(smart.stalker_passive_jobs, #smart.stalker_passive_jobs + 1, new_job)
+		rawset(smart.stalker_jobs, #smart.stalker_jobs + 1, new_job)
+		rawset(smart.stalker_free_jobs, #smart.stalker_free_jobs + 1, new_job)
+	else
+		rawset(smart.stalker_exclusive_jobs, #smart.stalker_exclusive_jobs + 1, new_job)
+	end
 
 end
 
@@ -1464,9 +1397,8 @@ use_text                       = nil
 
 	smart.stalker_jobs = {}
 	smart.stalker_passive_jobs = {}
-	smart.stalker_exterior_jobs = {}
+	smart.stalker_free_jobs = {}
 	smart.stalker_camp_jobs = {}
-	smart.stalker_cover_jobs = {}
 
 	-- TODO pořádek v jobs
 	-- create heli jobs 
@@ -1484,18 +1416,11 @@ use_text                       = nil
 	init_collector_jobs(smart,gname)
 	init_walker_jobs(smart,stalker_guard_jobs,gname)
 	init_patrol_jobs(smart,stalker_guard_jobs,gname)
-	init_animpoint_camper_jobs(smart, gname)
-	init_animpoint_normal_jobs(smart, gname)
-	init_animpoint_surge_jobs(smart, stalker_surge_jobs, gname)
+	init_camper_jobs(smart, gname)
+	init_animpoint_jobs(smart, gname)
 	init_guard_jobs(smart,stalker_guard_jobs,gname)
 	init_sniper_jobs(smart,stalker_guard_jobs,gname)
-	init_camper_jobs(smart,gname)
 	init_beh_jobs(smart,gname)
-
-	printf("ext jobs:")
-	for index, job in ipairs(smart.stalker_exterior_jobs) do
-		printf(job.section)
-	end
 
 	-- reference newly created job tables
 	smart.stalker_guard_jobs = stalker_guard_jobs
